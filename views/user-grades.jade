@@ -1,0 +1,63 @@
+extends layout
+
+append head
+  title #{username} #{key} - #{course} - Omnivore
+
+append content
+  p= username
+  p.key: +key(key)
+  if keyinfo.description
+    p= keyinfo.description
+  
+  if keyinfo.due
+    p: span.due.ts(data-value=keyinfo.due): +ts(keyinfo.due)
+  
+  if ! keyinfo.active
+    p
+      span.active(data-on=keyinfo.active)
+      | This value is not currently used to compute other values
+  
+  if grades.length
+    p Current
+    table
+      tbody
+        for row in grades
+          tr
+            td.value(data-type=row.type)= row.value
+            td.ts: +ts(row.ts)
+            td.override(data-on=row.compute && ! row.computed)
+    
+    p Historical
+    table
+      tbody
+        each row in history
+          tr
+            td.value(data-type=row.type)= row.value
+            td.ts: +ts(row.ts)
+            td.override(data-on=row.compute && ! row.computed)
+  
+  else
+    p No value
+  
+  if inputs.length
+    p This value is computed from inputs:
+    table
+      tbody
+        for row in inputs
+          tr
+            td.key: a(href="/#{course}/u/#{username}#{row.key}"): +key(path.relative(path.dirname(key), row.key))
+            td.value(data-type=row.type)= row.value
+            td.ts: +ts(row.ts)
+  
+  if outputs.length
+    if keyinfo.active
+      p This value is used to compute outputs:
+    else
+      p This value is not currently used to compute these outputs:
+    table
+      tbody
+        for row in outputs
+          tr
+            td.key: a(href="/#{course}/u/#{username}#{row.key}"): +key(path.relative(path.dirname(key), row.key))
+            td.value(data-type=row.type)= row.value
+            td.ts: +ts(row.ts)

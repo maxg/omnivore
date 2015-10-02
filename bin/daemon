@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -e
+
+sudo bin/run authbind --depth 3 npm start

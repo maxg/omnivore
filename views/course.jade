@@ -1,0 +1,17 @@
+extends layout
+
+append head
+  title #{course} - Omnivore
+
+append content
+  
+  p: a(href="u/#{authuser}/") My grades
+  
+  if authstaff
+    
+    p: a(href="grades/") All grades
+    
+    form(action='grades.csv' method='post' enctype='multipart/form-data')
+      //span.btn.btn-default.btn-file Select CSV
+      input(name='csv', type='file', accept='.csv')
+      button.btn.btn-default Upload grades

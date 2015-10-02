@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+
+eval `sed -n 's/ *"\(.*\)": *"\(.*\)",*/\1 \2/p' < config/deploy.json | \
+      awk '{print $1"="$2}'`
+
+if [[ "$EUID" -ne 0 ]]; then
+  echo "$0 requires root"
+fi
+
+if [[ -z "$@" ]]; then
+  echo "Usage: sudo $0 <cmd>"
+  exit 1
+fi
+
+dir=$(cd `dirname "$script"` && pwd)
+
+sudo -u "$app" NODE_ENV=production -- "$@"

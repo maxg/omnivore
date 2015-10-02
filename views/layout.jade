@@ -1,0 +1,43 @@
+mixin key(key)
+  each dir in key.split(/(?=\/)/)
+    wbr
+    if dir.length < 32
+      span(data-unbreakable=true)= dir
+    else
+      each chunk in dir.split(/(\w{20,})/).filter(chunk => chunk)
+        span(data-breakable=chunk.search(/^\w{20,}/) === 0)= chunk
+
+mixin ts(ts)
+  if ts
+    - var date = new Date(ts);
+    = date.toDateString() + ' ' + date.toLocaleTimeString().replace(/:00$/, ' ')
+
+doctype
+html
+  head
+    block head
+      meta(name='viewport' content='width=device-width, initial-scale=1')
+      link(rel='stylesheet', href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css')
+      link(rel='stylesheet', href='/web/style.css')
+  body(class=[ errorpage ? 'errorpage' : null, staffpage ? 'staffpage' : null ])
+    nav.navbar.navbar-fixed-top
+      .container
+        p.navbar-text
+          if course
+            a.navbar-link(href='/'+course) Omnivore #{course}
+          else
+            a.navbar-link(href='/') Omnivore
+        p.navbar-text.navbar-right
+          if authstaff
+            button#sudo.btn.btn-xs(class=sudo ? 'btn-danger' : 'btn-default') staff
+          |  #{authuser}
+    .container
+      block content
+    nav.navbar.navbar-bottom
+      .container
+        p.navbar-text.nom
+        p.navbar-text.navbar-right MIT EECS
+    block scripts
+      script(src='https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js')
+      script(src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js')
+      script(src='/web/script.js')

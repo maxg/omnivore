@@ -1,0 +1,97 @@
+@import url(https://fonts.googleapis.com/css?family=PT+Mono);
+
+/* header/footer */
+html {
+  position: relative;
+  min-height: 100%;
+}
+body {
+  padding-top: 80px;
+  margin-bottom: 80px;
+}
+nav.navbar.navbar-bottom {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  margin-bottom: 0;
+}
+
+/* https://color.adobe.com/Aspirin-C-color-theme-251864/ */
+
+body {
+  background: rgba(243, 255, 226, 0.5);
+  color: rgb(34, 83, 120);
+  font-size: 18px;
+}
+body.errorpage {
+  background: rgb(22, 149, 163);
+  color: rgb(243, 255, 226);
+}
+
+* {
+  font-family: 'PT Mono', monospace;
+  font-weight: 400;
+}
+
+body.staffpage nav.navbar {
+  background: rgb(235, 127, 0);
+}
+nav.navbar {
+  background: rgb(22, 149, 163);
+  color: rgb(243, 255, 226);
+  border-radius: 0;
+}
+nav.navbar .navbar-text {
+  float: left; /* disable collapsed layout */
+  margin-left: 0;
+  margin-right: 0;
+}
+nav.navbar .navbar-text.navbar-right {
+  float: right;  /* disable collapsed layout */
+}
+nav.navbar .navbar-link {
+  color: rgb(243, 255, 226);
+}
+
+table {
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+table tr td {
+  padding: 0 10px 5px 10px;
+  vertical-align: baseline;
+}
+table tr td:first-child {
+  padding-left: 0;
+}
+
+span[data-breakable] {
+  word-break: break-all;
+}
+span[data-unbreakable] {
+  white-space: nowrap;
+}
+
+td.ts {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+a.csv { display: inline-block; margin: 0 10px; }
+a.csv::before { content: '[csv]'; }
+
+.bullet::after { content: '-'; }
+.bullet[data-computed]::after { content: '>'; }
+
+.due[data-value]::before { content: 'due '; }
+
+.active::before { content: '[inactive] '; }
+.active[data-on]::before { content: ''; }
+
+.visible::before { content: '[hidden] '; }
+.visible[data-on]::before { content: ''; }
+
+.override[data-on]::before { content: '[override] '; }
+
+.nom:after { content: '\2014'; }
+.nom.nom-nom:after { content: '<'; }

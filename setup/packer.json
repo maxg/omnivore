@@ -1,0 +1,40 @@
+{
+  "variables": {
+    "openstack_auth_url": "",
+    "openstack_username": "",
+    "openstack_password": "",
+    "openstack_tenant": "",
+    "openstack_source_image": "",
+    "openstack_flavor": "",
+    "openstack_secgroup": "",
+    
+    "rev": null,
+    "tar": null,
+    "app": null
+  },
+  
+  "builders": [ {
+    "type": "openstack",
+    "username": "{{user `openstack_username`}}",
+    "password": "{{user `openstack_password`}}",
+    "tenant_name": "{{user `openstack_tenant`}}",
+    "identity_endpoint": "{{user `openstack_auth_url`}}",
+    "region": "RegionOne",
+    "image_name": "{{user `app`}}-{{timestamp}}-{{user `rev`}}",
+    "source_image": "{{user `openstack_source_image`}}",
+    "flavor": "{{user `openstack_flavor`}}",
+    "security_groups": "{{user `openstack_secgroup`}}",
+    "ssh_username": "ubuntu"
+  } ],
+  
+  "provisioners": [ {
+    "type": "file",
+    "source": "{{user `tar`}}",
+    "destination": "/tmp/{{user `app`}}.tar"
+  }, {
+    "type": "shell",
+    "script": "setup/provision.sh",
+    "environment_vars": [ "APP={{user `app`}}" ],
+    "execute_command": "{{.Vars}} ADMIN=`whoami` sudo -E sh -c {{.Path}}"
+  } ]
+}
