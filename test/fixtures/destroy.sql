@@ -1,0 +1,10 @@
+TRUNCATE
+    staff,
+    agents,
+    users,
+    active_rules,
+    visible_rules,
+    penalties,
+    keys,
+    computation_rules
+    CASCADE;

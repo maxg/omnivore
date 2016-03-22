@@ -1,0 +1,14 @@
+#!/bin/bash
+
+#
+# Run server.
+#
+
+set -e
+
+node --harmony src/serve-frontend |
+if [ "$NODE_ENV" == production ]; then
+    TODO
+else
+    node_modules/.bin/bunyan --output short
+fi

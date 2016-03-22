@@ -1,0 +1,78 @@
+extends layout
+
+append head
+  title #{username} #{key} - #{course} - Omnivore
+
+append content
+  
+  p= username
+  p.key: +keynav(key)
+  
+  if ! grade.visible
+    p
+      span.visible(data-on=grade.visible)
+      | This grade is not visible to students
+  
+  if ! grade.active
+    p
+      span.active(data-on=grade.active)
+      | This value is not currently used to compute other values
+  
+  if grade.deadline
+    p: span.due.ts(data-value=grade.deadline): +ts(grade.deadline)
+  
+  p Current
+  table
+    tbody
+      tr
+        td.bullet(data-computed=grade.computed)
+        td.value: +value(grade.value)
+        td.ts: +ts(grade.ts)
+        td.late(data-on=grade.penalty_applied)= grade.penalty_applied
+        td.override(data-on=grade.ts && grade.compute && ! grade.computed)
+        if ! history
+          td: a.history(href='/#{course}/u/#{username}#{key}.history')
+  
+  if history && history.length
+    p Historical
+    table
+      tbody
+        each row in history
+          tr
+            td.bullet(data-computed=row.computed)
+            td.value: +value(row.value)
+            td.ts: +ts(row.ts)
+            td.raw(data-on=row.raw)
+  
+  if inputs && inputs.length
+    p This value is computed from inputs:
+    table
+      tbody
+        each row in inputs
+          tr
+            td.bullet(data-computed=row.computed)
+            td.key: a(href='/#{course}/u/#{username}#{row.key}'): +key(path.relative(path.dirname(key), row.key))
+            td.value: +value(row.value)
+            td.ts: +ts(row.ts)
+            td.due.ts(data-value=row.deadline): +ts(row.deadline)
+            td.late(data-on=row.penalty_applied)
+            td.visible(data-on=row.visible)
+            td.active(data-on=row.active)
+  
+  if outputs && outputs.length
+    if grade.active
+      p This value is used to compute outputs:
+    else
+      p This value is not currently used to compute these outputs:
+    table
+      tbody
+        each row in outputs
+          tr
+            td.bullet(data-computed=row.computed)
+            td.key: a(href='/#{course}/u/#{username}#{row.key}'): +key(path.relative(path.dirname(key), row.key))
+            td.value: +value(row.value)
+            td.ts: +ts(row.ts)
+            td.due.ts(data-value=row.deadline): +ts(row.deadline)
+            td.late(data-on=row.penalty_applied)
+            td.visible(data-on=row.visible)
+            td.active(data-on=row.active)

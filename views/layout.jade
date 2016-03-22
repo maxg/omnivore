@@ -1,23 +1,41 @@
 mixin key(key)
   each dir in key.split(/(?=\/)/)
-    wbr
     if dir.length < 32
       span(data-unbreakable=true)= dir
     else
       each chunk in dir.split(/(\w{20,})/).filter(chunk => chunk)
         span(data-breakable=chunk.search(/^\w{20,}/) === 0)= chunk
+    if ! dir.endsWith('..')
+      wbr
+
+mixin keynav(key)
+  a(href='.'): +key(path.dirname(key))
+  if path.dirname(key) != '/'
+    | /
+  +key(path.basename(key))
+
+mixin value(value)
+  if types.is(value, 'array')
+    each elt, idx in value
+      if idx
+        | ,
+      |  #{elt}
+  else
+    = value
 
 mixin ts(ts)
   if ts
     - var date = new Date(ts);
-    = date.toDateString() + ' ' + date.toLocaleTimeString().replace(/:00$/, ' ')
+    = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '')
+    = ' '
+    = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(/ (.)M/, (_, p) => p.toLowerCase())
 
 doctype
 html
   head
     block head
-      meta(name='viewport' content='width=device-width, initial-scale=1')
-      link(rel='stylesheet', href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css')
+      meta(name='viewport', content='width=device-width, initial-scale=1')
+      link(rel='stylesheet', href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css')
       link(rel='stylesheet', href='/web/style.css')
   body(class=[ errorpage ? 'errorpage' : null, staffpage ? 'staffpage' : null ])
     nav.navbar.navbar-fixed-top
@@ -27,10 +45,7 @@ html
             a.navbar-link(href='/'+course) Omnivore #{course}
           else
             a.navbar-link(href='/') Omnivore
-        p.navbar-text.navbar-right
-          if authstaff
-            button#sudo.btn.btn-xs(class=sudo ? 'btn-danger' : 'btn-default') staff
-          |  #{authuser}
+        p.navbar-text.navbar-right #{authuser}
     .container
       block content
     nav.navbar.navbar-bottom
@@ -39,5 +54,5 @@ html
         p.navbar-text.navbar-right MIT EECS
     block scripts
       script(src='https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js')
-      script(src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js')
+      script(src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js')
       script(src='/web/script.js')

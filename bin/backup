@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -e
+
+if [[ "$USER" != omnivore ]]; then
+  echo "$0 requires omnivore"
+  exit 1
+fi
+
+date=`date +%Y%m%d%H%M%S`
+
+psql postgres -c "copy (select datname from pg_database where datname like '%/%') to stdout" |
+while read -r db
+do
+  dest="backup/$db/$date"
+  mkdir -p "$dest"
+  pg_dump -Fd "$db" -f "$dest"
+done

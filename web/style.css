@@ -1,4 +1,4 @@
-@import url(https://fonts.googleapis.com/css?family=PT+Mono);
+@import url(https://fonts.googleapis.com/css?family=Roboto|Roboto+Mono);
 
 /* header/footer */
 html {
@@ -29,12 +29,15 @@ body.errorpage {
 }
 
 * {
-  font-family: 'PT Mono', monospace;
+  font-family: 'Roboto Mono', monospace;
   font-weight: 400;
 }
 
-body.staffpage nav.navbar {
-  background: rgb(235, 127, 0);
+a {
+  color: rgb(22, 149, 163);
+}
+a:hover {
+  color: rgb(34, 83, 120);
 }
 nav.navbar {
   background: rgb(22, 149, 163);
@@ -51,6 +54,39 @@ nav.navbar .navbar-text.navbar-right {
 }
 nav.navbar .navbar-link {
   color: rgb(243, 255, 226);
+}
+
+.staff {
+  color: rgb(118, 64, 0);
+}
+.staff a {
+  color: rgb(235, 127, 0);
+}
+.staff a:hover {
+  color: rgb(118, 64, 0);
+}
+body.staffpage nav.navbar {
+  background: rgb(235, 127, 0);
+}
+
+/* http://www.abeautifulsite.net/whipping-file-inputs-into-shape-with-bootstrap-3/ */
+.btn-file {
+  position: relative;
+  overflow: hidden;
+}
+.btn-file input[type=file] {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 100%;
+  min-height: 100%;
+  font-size: 100px;
+  text-align: right;
+  opacity: 0;
+  outline: none;
+  background: none;
+  cursor: inherit;
+  display: block;
 }
 
 table {
@@ -77,6 +113,9 @@ td.ts {
   white-space: nowrap;
 }
 
+a.history { display: inline-block; margin: 0 10px; }
+a.history::before { content: '[history]'; }
+
 a.csv { display: inline-block; margin: 0 10px; }
 a.csv::before { content: '[csv]'; }
 
@@ -85,6 +124,8 @@ a.csv::before { content: '[csv]'; }
 
 .due[data-value]::before { content: 'due '; }
 
+.late[data-on]::before { content: '[late] '; }
+
 .active::before { content: '[inactive] '; }
 .active[data-on]::before { content: ''; }
 
@@ -92,6 +133,15 @@ a.csv::before { content: '[csv]'; }
 .visible[data-on]::before { content: ''; }
 
 .override[data-on]::before { content: '[override] '; }
+
+.raw[data-on]::before { content: '[input]'; }
+
+.comment .key,
+.comment .value { font-size: 15px; vertical-align: top; }
+.comment .key { text-align: right; }
+.comment .value { padding-left: 20px; padding-right: 0; }
+
+.roster[data-on]::before { content: '[*]'; }
 
 .nom:after { content: '\2014'; }
 .nom.nom-nom:after { content: '<'; }

@@ -1,5 +1,13 @@
 #!/bin/bash
 
+#
+# Run in production.
+#
+
 set -e
 
-sudo bin/run authbind --depth 3 npm start
+if [[ "$EUID" -ne 0 ]]; then
+  echo "$0 requires root"
+fi
+
+sudo -u omnivore NODE_ENV=production -- authbind bin/serve

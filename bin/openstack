@@ -1,8 +1,13 @@
 #!/bin/bash
 
+#
+# Run OpenStack commands.
+# Requires: pip install python-novaclient python-cinderclient
+#
+
 set -e
 
-eval `sed -n 's/ *"\(.*\)": *"\(.*\)",*/\1 \2/p' < config/deploy.json | \
+eval `sed -n 's/ *"\(.*\)": *"\(.*\)",*/\1 \2/p' < setup/packer.conf.json | \
       awk '{print $1"="$2}'`
 export OS_AUTH_URL="$openstack_auth_url"
 export OS_USERNAME="$openstack_username"
@@ -40,11 +45,14 @@ case "$cmd" in
     imageid=`nova image-show $imagename | tablepick id 2`
     [ -z "$imageid" ] && exit
     
-    ipaddr=`dig +short $hostname`
+    ipaddr=`dig +short $hostname | tail -1`
     [ -z "$ipaddr" ] && network=""
     [ -n "$ipaddr" ] && network="--nic net-id=`nova network-list | tablepick inet 1`,v4-fixed-ip=$ipaddr"
     
-    echo "Booting $name (${ipaddr:-dyamic IP}) from $imagename ($imageid)"
+    echo "Booting $name (${ipaddr:-dynamic IP}) from $imagename ($imageid)"
+    
+    # work around Packer/OpenStack null-description issue
+    nova image-meta $imagename set description=$imagename
     
     volsize=16
     
@@ -81,7 +89,7 @@ case "$cmd" in
     
     echo "IP addr: $inetaddr"
     ;;
-  
+    
   flavors)
     nova flavor-list | tablegrep 'ups\.'
     ;;
@@ -92,6 +100,14 @@ case "$cmd" in
     
   images)
     nova image-list | tablegrep $app
+    ;;
+    
+  secgroups)
+    nova secgroup-list
+    ;;
+    
+  keys)
+    nova keypair-list
     ;;
     
   instances)

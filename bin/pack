@@ -27,7 +27,7 @@ fi
 
 shift
 
-cmd="packer build -var-file=config/deploy.json \\
+cmd="packer build -var-file=setup/packer.conf.json \\
              -var rev=$revision -var tar=<(eval $tar) \\
              ""$@"" \\
              setup/packer.json"

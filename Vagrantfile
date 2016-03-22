@@ -9,5 +9,5 @@ Vagrant.configure(2) do |config|
                    "VBoxInternal2/SharedFoldersEnableSymlinksCreate/v-root", "1" ]
   end
 
-  config.vm.provision "shell", path: "setup/setup.sh", args: "/vagrant"
+  config.vm.provision "shell", path: "setup/setup.sh", args: [ "/vagrant", "vagrant" ]
 end

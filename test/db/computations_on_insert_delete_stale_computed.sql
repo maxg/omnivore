@@ -1,0 +1,13 @@
+INSERT INTO current_computed VALUES ('alice', 'test.alpha', t(), '7');
+INSERT INTO current_computed VALUES ('alice', 'test.beta', t(), '42');
+
+SELECT * INTO STRICT result FROM current_computed WHERE key = 'test.beta';
+PERFORM assert(FOUND);
+
+INSERT INTO computations VALUES ('test.beta', ARRAY[LQUERY 'test.a*'], '(a) -> a');
+
+SELECT * INTO result FROM current_computed WHERE key = 'test.beta';
+PERFORM assert(NOT FOUND, result::TEXT);
+
+SELECT * INTO STRICT result FROM current_computed WHERE key = 'test.alpha';
+PERFORM assert(FOUND);

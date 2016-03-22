@@ -2,28 +2,75 @@
 
 cd "$1"
 
-wget -qO- https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-echo 'deb https://deb.nodesource.com/node_0.12 trusty main' > /etc/apt/sources.list.d/nodesource.list
+user=$2
 
-add-apt-repository ppa:git-core/ppa
+postgresql_version='9.5'
 
+# Development
+apt-get install -y git
+
+# Apt Repositories
+cat > /etc/apt/sources.list.d/nodesource.list <<< 'deb https://deb.nodesource.com/node_5.x trusty main'
+wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+cat > /etc/apt/sources.list.d/pgdg.list <<< "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $postgresql_version"
+wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 apt-get update
 
-apt-get install -y git nodejs
-# NodeGit
-apt-get install -y build-essential libssl-dev
+# Node
+apt-get install -y nodejs build-essential
 
-apt-get install -y sqlite3
+# for pg package
+apt-get install -y libpq-dev
+
+# PostgreSQL
+apt-get install -y "postgresql-$postgresql_version" "postgresql-contrib-$postgresql_version"
+sudo -u postgres createuser $user -d
+sudo -u postgres psql -d template1 -c 'CREATE EXTENSION ltree;'
+
+# for GitHub downloads
+apt-get install -y unzip
+
+# Pgweb
+pgweb_tag=$(
+  curl --silent --head https://github.com/sosedoff/pgweb/releases/latest |
+    grep '^Location: ' | grep -o '[^/]*$' | tr -d '\r'
+)
+pgweb_zip=pgweb_linux_amd64.zip
+(
+  cd pgweb
+  curl -LO "https://github.com/sosedoff/pgweb/releases/download/$pgweb_tag/$pgweb_zip"
+  unzip "$pgweb_zip" && rm "$pgweb_zip"
+)
+
+# pgBadger
+pgbadger_tag=$(
+  curl --silent --head https://github.com/dalibo/pgbadger/releases/latest |
+    grep '^Location: ' | grep -o '[^/]*$' | tr -d '\r'
+)
+pgbadger_zip="$pgbadger_tag.zip"
+(
+  cd pgbadger
+  curl -LO "https://github.com/dalibo/pgbadger/archive/$pgbadger_zip"
+  unzip "$pgbadger_zip" && rm "$pgbadger_zip"
+  cd pgbadger-${pgbadger_tag#v}
+  perl Makefile.PL
+  make
+)
 
 # OpenStack
-apt-get install -y python-dev python-pip
-pip install python-novaclient python-cinderclient
+if [ $user == vagrant ]
+then
+  apt-get install -y python-dev python-pip
+  pip install python-novaclient python-cinderclient
+  pip install pyopenssl ndg-httpsclient pyasn1
+fi
 
+# SSL
 (
   cd config
-  # fetch CA certificate
+  # Fetch CA certificate
   [ -f ssl-ca.pem ] || wget -q -O - http://ca.mit.edu/mitClient.crt | openssl x509 -inform der -out ssl-ca.pem
-  # generate self-signed certificate
+  # Generate self-signed certificate
   [ -f ssl-private-key.pem ] || openssl genrsa -out ssl-private-key.pem 2048
   [ -f ssl-certificate.pem ] || openssl req -new -key ssl-private-key.pem -config ../setup/openssl.conf | openssl x509 -req -signkey ssl-private-key.pem -out ssl-certificate.pem
 )

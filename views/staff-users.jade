@@ -1,0 +1,13 @@
+extends layout
+
+append head
+  title Users - #{course} - Omnivore
+
+append content
+  
+  table
+    tbody
+      each row in users
+        tr
+          td.user: a(href='/#{course}/u/#{row.username}/')= row.username
+          td.roster(data-on=row.on_roster)

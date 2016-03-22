@@ -8,7 +8,7 @@ append content
   p 401 Unauthorized
   p= error
   if cert
-    p User:
+    p Certificate:
     p= JSON.stringify(cert.subject, null, 1)
     p Expires:
     p= cert.valid_to

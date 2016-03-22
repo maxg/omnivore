@@ -4,490 +4,652 @@ const assert = require('assert');
 const crypto = require('crypto');
 const events = require('events');
 const fs = require('fs');
-const path = require('path');
 const util = require('util');
+const vm = require('vm');
 
 const async = require('async');
-const minimatch = require('minimatch');
-const sqlite3 = require('sqlite3'); //.verbose(); // XXX
-const xtype = require('xtypejs');
+const memoize = require('memoizee');
+const pg = require('pg');
 
-const config = require('../config');
-const log = require('./logger').cat('omnivore');
+const logger = require('./logger');
 
-const course_regex = exports.course_regex = /^[A-Z0-9]+\.[A-Z0-9]+\/(fa|ia|sp|su)\d\d$/;
-const agent_regex = exports.agent_regex = /^!?\w+$/;
-const user_regex = exports.user_regex = /^\w+$/;
-const key_regex = exports.key_regex = /^(\/|(\/[\w-]+)+)$/;
-const pattern_regex = exports.pattern_regex = /^(\/([\w-]+|\*))+$/;
-const timestamp_regex = exports.timestamp_regex = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{3})?Z$/;
+const types = exports.types = require('./omnivore-types');
+
+const db_schema = fs.readFileSync('./config/schema.sql', { encoding: 'utf-8' });
+const db_update = fs.readFileSync('./config/update.sql', { encoding: 'utf-8' });
 
 const signature_algorithm = exports.signature_algorithm = 'RSA-SHA256';
 const signature_encoding = exports.signature_encoding = 'base64';
 
-exports.instance = function instance(course) {
-  assert(xtype.isString(course) && course_regex.test(course));
-  let setup = require(path.join(config.course_dir, course, 'setup.js'));
-  let db = path.join(config.data_dir, course, 'grades.sqlite');
-  return new Omnivore(setup, db);
-}
-
-const Omnivore = exports.Omnivore = function Omnivore(setup, db) {
-  assert(xtype.isObject(setup));
-  assert(xtype.isString(db) && (db === ':memory:' || fs.statSync(path.dirname(db)).isDirectory()));
+// create a new Omnivore
+//   instance emits 'ready' event when usable
+const Omnivore = exports.Omnivore = function Omnivore(course, config) {
+  types.assert(course, 'course');
+  types.assert(config, 'object|undefined');
   
-  let self = this;
   events.EventEmitter.call(this);
   
-  this.setup = {};
+  this.course = course;
+  this.config = Object.assign({}, config);
   
-  for (let prop of [ 'agents', 'computed', 'dates', 'reports', 'staff' ]) {
-    Object.defineProperty(this.setup, prop, { get: () => setup[prop] || [] });
-  }
-  
-  for (let spec of this.setup.dates) {
-    for (let date of [ 'visible', 'active', 'due' ]) {
-      if (spec[date]) { spec[date] = new Date(spec[date]); }
-    }
-  }
-  
-  this.db = new sqlite3.Database(db);
-  
-  this.db.on('open', this.emit.bind(this, 'open'));
-  this.db.on('close', this.emit.bind(this, 'close'));
-  this.db.on('error', this.emit.bind(this, 'error'));
-  //this.db.on('trace', sql => console.log(sql));
-  //this.db.on('profile', (sql, ms) => {
-  //  if (ms < 100) { return; }
-  //  log.info({ sql: sql, ms: ms }, 'profile');
-  //  self.db.all('EXPLAIN QUERY PLAN ' + sql, (err, rows) => {
-  //    log.info({ sql: sql, plan: rows.map(row => row.detail) }, 'query plan');
-  //  });
-  //});
-  
-  let handleError = err => { if (err) { self.emit('error', err); } };
-  let prepare = sql => self.db.prepare(sql, handleError);
-  
-  this.db.serialize(); // XXX remove me
-  
-  this.db.exec(config.db_schema, handleError);
-  
-  this.statements = {
-    
-    select: {
-      key: prepare('SELECT * FROM keys WHERE key = $key'),
-      info: prepare('SELECT * FROM keyinfo WHERE ($key IS NULL OR key = $key)'),
-      infoChildren: prepare('SELECT * FROM keyinfo WHERE parent = $key AND key != "/"'),
-      infoOutputs: prepare('SELECT * FROM keyinfo WHERE key IN (SELECT output FROM dataflow WHERE input = $key)'),
-      infoInputs: prepare('SELECT * FROM keyinfo WHERE key IN (SELECT input FROM dataflow WHERE output = $key)'),
-      userGrade: prepare(config.db_select.grade),
-      grades: prepare('SELECT * FROM grades WHERE ($user IS NULL OR user = $user) AND key = $key'),
-      gradeChildren: prepare('SELECT * FROM grades WHERE ($user IS NULL OR user = $user) AND parent = $key'),
-      gradeOutputs: prepare('SELECT * FROM grades WHERE ($user IS NULL OR user = $user) ' +
-                            'AND key IN (SELECT output FROM dataflow JOIN active ON (input = key) WHERE input = $key)'),
-      userGradeInputs: prepare(config.db_select.inputs),
-      gradeInputs: prepare('SELECT * FROM grades NATURAL JOIN active WHERE ($user IS NULL OR user = $user) ' +
-                           'AND key IN (SELECT input FROM dataflow WHERE output = $key)'),
-      history: prepare('SELECT * FROM history WHERE ($user IS NULL OR user = $user) AND key = $key'),
-    },
-    
-    insert: {
-      key: prepare('INSERT OR IGNORE INTO keys (key, parent) VALUES ($key, $parent)'),
-      active: prepare('INSERT OR IGNORE INTO active VALUES ($key)'),
-      visible: prepare('INSERT OR IGNORE INTO visible VALUES ($key)'),
-      rank: prepare('INSERT OR REPLACE INTO ranks VALUES ($key, $rank)'),
-      deadline: prepare('INSERT OR REPLACE INTO deadlines (key, due) VALUES ($key, datetime($due))'),
-      dataflow: prepare('INSERT OR IGNORE INTO dataflow (output, input) VALUES ($output, $input)'),
-      data: prepare('INSERT OR REPLACE INTO all_data (user, key, ts, type, value, agent) ' +
-                    'VALUES ($user, $key, datetime($ts), $type, $value, $agent)'),
-      computed: prepare('INSERT OR REPLACE INTO all_computed (user, key, ts, type, value) ' +
-                        'VALUES ($user, $key, datetime("now"), $type, $value)'),
-    },
+  this._log = logger.log.child({ in: 'omnivore', course });
+  this._logForTime = ms => {
+    return this._log[ms < 50 ? 'debug' : ms < 250 ? 'info' : 'warn'].bind(this._log);
   };
   
-  this.atoms = async.queue((fn, cb) => fn(cb));
+  this._connect = cb => pg.connect({ host: '/var/run/postgresql', database: course }, cb);
   
-  this._setupKey(null, handleError);
+  this._functions = {};
   
-  for (let spec of self.setup.reports) {
-    spec.order.forEach((child, idx) => {
-      let key = spec.in + '/' + child;
-      async.series([
-        cb => self._addKey(key, cb),
-        cb => self.statements.insert.rank.run({ $key: spec.in + '/' + child, $rank: idx }, cb),
-      ], handleError);
+  async.waterfall([
+    cb => pg.connect({ host: '/var/run/postgresql', database: 'postgres' }, cb),
+    (client, done, cb) => {
+      this.once('ready', done);
+      client.query({
+        text: 'SELECT * FROM pg_catalog.pg_database WHERE datname = $1',
+        values: [ course ],
+      }, (err, result) => cb(err, client, result));
+    },
+    (client, result, cb) => {
+      if (result.rows.length) { return cb(null, false); }
+      client.query('CREATE DATABASE "' + course + '"', cb);
+    },
+    (created, cb) => this._connect((err, client, done) => cb(err, created, client, done)),
+    (created, client, done, cb) => {
+      this.once('ready', done);
+      if (created) {
+        this._log.info({ course }, 'initializing')
+        return client.query(db_schema, cb);
+      }
+      cb();
+    }
+  ], err => {
+    if (err) { throw err; }
+    this.emit('ready');
+  });
+  
+  this._memo('staff');
+  if (this.config.debug_function_time) {
+    this._time(
+      '_add', '_multiadd',
+      '_get', '_multiget',
+      '_children', '_dirs', '_leaves', '_history',
+      '_inputs', '_outputs',
+      '_current', '_data', '_penalize', '_computed', '_evaluate'
+    );
+  }
+};
+util.inherits(Omnivore, events.EventEmitter);
+
+// wrap instance methods to memoize results for a limited time
+Omnivore.prototype._memo = function _memo(...methods) {
+  this.memo = {};
+  for (let method of methods) {
+    types.assert(method, 'string');
+    types.assert(this[method], 'function');
+    
+    this.memo[method] = memoize((...args) => this[method](...args), {
+      async: true,
+      length: false,
+      maxAge: 6000, // XXX longer
     });
   }
 }
-util.inherits(Omnivore, events.EventEmitter);
 
-function exclusive(fn) {
-  return function() {
-    // run the original function on the transaction queue & intercede in callback chain
-    let self = this;
-    let args = Array.prototype.slice.call(arguments, 0, arguments.length-1);
-    let cb = arguments[arguments.length-1];
-    assert(xtype.isFunction(cb));
-    this.atoms.push(done => fn.apply(self, args.concat(function() {
-      done();
-      cb.apply(this, arguments);
-    })));
+function timed(fn) {
+  types.assert(fn, 'function');
+  
+  let timed = function(...args) {
+    let start = +new Date();
+    let cb = args.pop();
+    types.assert(cb, 'function', 'callback');
+    fn.apply(this, [ ...args, (...results) => {
+      let finish = +new Date();
+      let ms = finish - start;
+      this._logForTime(ms)({ fn: timed.name, args: util.inspect(args, { depth: 1, colors: true }), ms });
+      cb.apply(this, results);
+    } ]);
+  };
+  Object.defineProperty(timed, 'name', { value: `[t]${fn.name}` });
+  return timed;
+}
+
+// wrap instance methods to log timing
+Omnivore.prototype._time = function _time(...methods) {
+  for (let method of methods) {
+    types.assert(method, 'string');
+    types.assert(this[method], 'function');
+    
+    this[method] = timed(this[method]);
   }
 }
 
-Omnivore.prototype.close = exclusive(Omnivore.prototype._close = function _close(callback) {
-  log.info('close');
-  assert(xtype.isFunction(callback));
+// wrap a function so it runs with a db client
+//   fn will receive db client as first arg, must take callback as last arg
+function client(fn) {
+  types.assert(fn, 'function');
   
-  this.db.close(callback);
-})
-
-Omnivore.prototype._setupKey = function _setupKey(key, callback) {
-  assert(xtype.isNull(key) || (xtype.isString(key) && key_regex.test(key)));
-  assert(xtype.isFunction(callback));
-  
-  let tasks = [];
-  
-  let self = this;
-  self.statements.select.info.each({ $key: key }, (err, row) => {
-    row = sqliteToRowSync(row);
+  let withClient = function(...args) {
+    let cb = args.pop();
+    types.assert(cb, 'function', 'callback');
+    let self = this;
     
-    for (let spec of self.setup.dates) {
-      if ( ! minimatch(row.key, spec.keys)) { continue; }
+    this._connect((err, client, done) => {
+      if (err) { done(err); return cb(err); }
       
-      if (spec.due && ((row.due && row.due.valueOf()) !== spec.due.valueOf())) {
-        tasks.push(cb => self.statements.insert.deadline.run({ $key: row.key, $due: spec.due.toISOString() }, cb));
-      }
+      client.inspect = function(depth, opts) { return '[client]'; }
       
-      for (let flag of [ 'active', 'visible' ]) {
-        if (spec[flag] && spec[flag].valueOf() <= new Date().valueOf() && ! row[flag]) {
-          tasks.push(cb => self.statements.insert[flag].run({ $key: row.key }, cb));
+      client.logQuery = client.query;
+      if (this.config.debug_query_time) {
+        client.logQuery = function logQuery(stmt, ...args) {
+          let qstart = +new Date();
+          let cb = args.pop();
+          return client.query(stmt, ...args, (...results) => {
+            let qfinish = +new Date();
+            let ms = qfinish - qstart;
+            self._logForTime(ms)({ query: stmt.name, values: stmt.values, ms });
+            cb.apply(this, results);
+          });
+          return q;
         }
       }
+      
+      fn.apply(this, [ client, ...args, (...results) => {
+        let err = results[0];
+        done(err);
+        cb.apply(this, results);
+      } ]);
+    });
+  };
+  Object.defineProperty(withClient, 'name', { value: `[pg]${fn.name}` });
+  return withClient;
+}
+
+// wrap a function so it runs in a db transaction
+//   fn must take a db client as first arg, callback as last arg
+function transaction(fn) {
+  types.assert(fn, 'function');
+  
+  let inTransaction = function(...args) {
+    let client = args[0];
+    types.assert(client, pg.Client, 'pg.Client');
+    let cb = args.pop();
+    types.assert(cb, 'function', 'callback');
+    
+    client.query('BEGIN', txerr => {
+      if (txerr) { return cb(txerr); }
+      fn.apply(this, [ ...args, (...results) => {
+        let err = results[0];
+        client.query(err ? 'ROLLBACK' : 'COMMIT', txerr => txerr ? cb(txerr) : cb.apply(this, results));
+      } ]);
+    });
+  };
+  Object.defineProperty(inTransaction, 'name', { value: `[tx]${fn.name}` });
+  return inTransaction;
+}
+
+// obtain a database client
+Omnivore.prototype.pg = client(
+                        types.check([ pg.Client, 'function', ], [ 'any' ],
+                        function _pg(client, fn, done) {
+  fn(client, done);
+}));
+
+// close the database connection
+Omnivore.prototype.pg.end = () => pg.end();
+
+Omnivore.prototype.parse = client(
+                           types.check([ pg.Client, 'agent', 'string', 'string' ], [ 'row_array' ],
+                           Omnivore.prototype._parse = function _parse(client, agent, signature, json, done) {
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'parse-select-agents',
+      text: 'SELECT public_key FROM agents WHERE agent = $1',
+      values: [ agent ],
+    }, cb),
+    (result, cb) => result.rows.length ? cb(null, result.rows[0]) : cb('unknown agent'),
+    (row, cb) => {
+      let verify = crypto.createVerify(signature_algorithm);
+      verify.end(json, 'utf8');
+      
+      let valid = verify.verify(row.public_key, signature, signature_encoding);
+      if ( ! valid) { return cb('invalid signature'); }
+      
+      let data = JSON.parse(json, (key, value) => {
+        if (key === 'ts') {
+          types.assert(value, 'timestamp');
+          return new Date(value);
+        }
+        return value;
+      });
+      cb(null, data);
     }
-    
-    tasks.push(cb => self._addDataflow(row.key, cb));
-  }, () => async.series(tasks, callback));
-}
+  ], done);
+}));
 
-Omnivore.prototype._addKey = function _addKey(key, callback) {
-  assert(xtype.isString(key) && key_regex.test(key));
-  assert(xtype.isFunction(callback));
+// add a data point
+Omnivore.prototype.add = client(transaction(
+                         types.translate([ pg.Client, 'agent', 'username', 'key', Date, 'something' ], [ 'any' ],
+                         Omnivore.prototype._add = function _add(client, agent, username, key, ts, value, done) {
+  //console.log('add', agent, username, key, ts, value);
   
-  let self = this;
-  self.statements.select.key.get({ $key: key }, (err, row) => {
-    if (row) { return callback(); }
-    
-    let parent = '';
-    let tasks = [];
-    for (let component of key.split('/').slice(1)) {
-      tasks.push(cb => self.statements.insert.key.run({
-        $parent: parent || '/',
-        $key: parent += '/' + component,
-      }, cb));
-    }
-    
-    tasks.push(cb => self._setupKey(key, cb));
-    
-    async.series(tasks, err => callback(err));
-  });
-}
+  client.logQuery({
+    name: 'add-insert-raw_data',
+    text: 'INSERT INTO raw_data (username, key, ts, value, agent) VALUES ($1, $2, $3, $4, $5)',
+    values: [ username, key, ts, JSON.stringify(value), agent ],
+  }, done);
+})));
 
-function matching(key, glob) {
-  assert(xtype.isString(key) && key_regex.test(key));
-  assert(xtype.isString(glob) && pattern_regex.test(key));
+// add data points
+Omnivore.prototype.multiadd = client(transaction(
+                              types.translate([ pg.Client, 'agent', 'row_array' ], [ ],
+                              Omnivore.prototype._multiadd = function _multiadd(client, agent, entries, done) {
+  //console.log('multiadd', agent, entries);
   
-  return new RegExp(minimatch.makeRe(glob).source.replace(/\$$/,'')).exec(key)[0];
-}
+  async.eachSeries(entries, (entry, cb) => {
+    this._add(client, agent, entry.username, entry.key, entry.ts, entry.value, cb);
+  }, done);
+})));
 
-Omnivore.prototype._addDataflow = function _addDataflow(key, callback) {
-  assert(xtype.isString(key) && key_regex.test(key));
-  assert(xtype.isFunction(callback));
+// get data points
+Omnivore.prototype.get = client(transaction(
+                         types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
+                         Omnivore.prototype._get = function _get(client, spec, done) {
+  //console.log('get', spec);
   
-  let params = [];
-  for (let computed of this.setup.computed) {
-    for (let from of computed.from) {
-      if (minimatch(key, computed.in + from)) {
-        params.push({ $output: matching(key, computed.in) + computed.compute, $input: key });
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'get-select-grades',
+      text: `SELECT * FROM grades
+             WHERE ($1 IS NULL OR username = $1) AND ($2 IS NULL OR key = $2) AND (visible OR $3)
+             ORDER BY username, key`,
+      types: [ types.pg.TEXT, types.pg.LTREE, types.pg.BOOL ],
+      values: [ spec.username, spec.key, spec.hidden ],
+    }, cb),
+    (result, cb) => this._current(client, result.rows, cb),
+  ], done);
+})));
+
+// get data points
+Omnivore.prototype.multiget = client(transaction(
+                              types.translate([ pg.Client, 'key_array', 'spec' ], [ 'array' ],
+                              Omnivore.prototype._multiget = function _multiget(client, keys, spec, done) {
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'multiget-select-grades',
+      text: `SELECT * FROM grades
+             WHERE ($1 IS NULL OR username = $1) AND (key ? $2) AND (visible OR $3)
+             ORDER BY username, key`,
+      types: [ types.pg.TEXT, types.pg.LQUERYarray, types.pg.BOOL ],
+      values: [ spec.username, keys, spec.hidden ],
+    }, cb),
+    (result, cb) => this._current(client, result.rows, cb),
+    (rows, cb) => {
+      let results = [];
+      let users = {};
+      for (let row of rows) {
+        if ( ! users[row.username]) {
+          results.push(users[row.username] = { username: row.username });
+        }
+        users[row.username][types.convertOut(row.key, 'key')] = types.convertOut(row, 'row');
       }
-    }
-  }
-  let self = this;
-  async.series(
-    params.map(param => cb => self._addKey(param.$output, cb))
-    .concat(params.map(param => cb => self.statements.insert.dataflow.run(param, cb)))
-    .concat(params.map(param => cb => self._addDataflow(param.$output, cb))),
-    callback);
-}
+      cb(null, results);
+    },
+  ], done);
+})));
 
-Omnivore.prototype.parse = function(agent, signature, json, callback) {
-  log.info({ agent: agent }, 'parse');
-  assert(xtype.isString(agent) && agent_regex.test(agent));
-  assert(xtype.isString(signature));
-  assert(xtype.isString(json));
-  assert(xtype.isFunction(callback));
+// TODO TEST
+// get child data points
+Omnivore.prototype.children = client(transaction(
+                              types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
+                              Omnivore.prototype._children = function _children(client, spec, done) {
+  //console.log('children', spec);
   
-  agent = this.setup.agents[agent];
-  if ( ! agent) { return callback('unknown agent'); }
-  
-  // XXX no, agents should be specified in setup file
-  let verify = crypto.createVerify(signature_algorithm);
-  verify.end(json, 'utf8');
-  let valid = verify.verify(agent.public, signature, signature_encoding);
-  if ( ! valid) { return callback('invalid signature'); }
-  
-  let data = JSON.parse(json, (key, value) => {
-    if (key === 'ts') {
-      assert(xtype.isString(value) && timestamp_regex.test(value));
-      return new Date(value);
-    }
-    return value;
-  });
-  callback(null, data);
-}
-
-Omnivore.prototype.add = exclusive(Omnivore.prototype._add = function _add(agent, user, key, ts, value, callback) {
-  log.info({ agent: agent, user: user, key: key }, 'add');
-  assert(xtype.isString(agent) && agent_regex.test(agent));
-  assert(xtype.isString(user) && user_regex.test(user));
-  assert(xtype.isString(key) && key_regex.test(key));
-  assert(xtype.isDate(ts));
-  assert(xtype.isNumber(value) || xtype.isString(value) || xtype.isBoolean(value));
-  assert(xtype.isFunction(callback));
-  
-  // TODO agent permission
-  
-  let self = this;
-  async.series([
-    cb => self._addKey(key, cb),
-    cb => self._addDataflow(key, cb),
-    cb => self.statements.insert.data.run({
-      $user: user,
-      $key: key,
-      $ts: ts.toISOString(),
-      $type: xtype.type(value),
-      $value: value,
-      $agent: agent,
-    }, cb),
-  ], err => callback(err));
-})
-
-Omnivore.prototype.multiadd = exclusive(Omnivore.prototype._multiadd = function _multiadd(agent, entries, callback) {
-  log.info({ agent: agent }, 'multiadd');
-  assert(xtype.isString(agent) && agent_regex.test(agent));
-  assert(xtype.isArray(entries) && xtype.all.isObject(entries));
-  assert(xtype.isFunction(callback));
-  
-  let self = this;
-  async.series([
-    cb => self.db.run('BEGIN IMMEDIATE TRANSACTION', cb),
-    cb => async.eachSeries(entries, (entry, cb) => {
-      self._add(agent, entry.user, entry.key, entry.ts, entry.value, cb);
-    }, cb),
-  ], err => {
-    self.db.run(err ? 'ROLLBACK TRANSACTION' : 'COMMIT TRANSACTION');
-    // XXX what if that failed?
-    callback(err);
-  });
-})
-
-Omnivore.prototype.dir = function dir(key, callback) {
-  log.info({ key: key }, 'dir');
-  assert(xtype.isString(key) && key_regex.test(key));
-  assert(xtype.isFunction(callback));
-  
-  let self = this;
   async.waterfall([
-    cb => self.statements.select.infoChildren.all({ $key: key }, cb),
-    (rows, cb) => async.map(rows, sqliteToRow, cb),
-  ], callback);
-}
+    cb => client.logQuery({
+      name: 'children-select-grades',
+      text: `SELECT * FROM grades
+             WHERE ($1 IS NULL OR username = $1) AND ($2 IS NULL OR key ~ $3) AND (visible OR $4)
+             ORDER BY username, key_order, key`,
+      types: [ types.pg.TEXT, types.pg.TEXT, types.pg.LQUERY, types.pg.BOOL ],
+      values: [ spec.username, spec.key, spec.key ? `${spec.key}.*{1}` : '*{1}', spec.hidden ],
+    }, cb),
+    (result, cb) => this._current(client, result.rows, cb),
+  ], done);
+})));
 
-Omnivore.prototype.info = function info(spec, callback) {
-  log.info({ spec: spec }, 'info');
-  assert(xtype.isSinglePropObject(spec));
-  assert(xtype.isFunction(callback));
+// TODO TEST
+// get subdirectories
+Omnivore.prototype.dirs = client(transaction(
+                          types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
+                          Omnivore.prototype._dirs = function _dirs(client, spec, done) {
+  //console.log('dirs', spec);
   
-  let statement;
-  if (spec.key) {
-    statement = this.statements.select.info;
-  } else if (spec.input) {
-    statement = this.statements.select.infoOutputs;
-  } else if (spec.output) {
-    statement = this.statements.select.infoInputs;
-  } else if (spec.all) {
-    statement = this.statements.select.info;
-  } else {
-    assert(false);
-  }
-  let key = spec.key || spec.input || spec.output || null;
-  assert(xtype.isNull(key) || (xtype.isString(key) && key_regex.test(key)));
-  
-  let self = this;
   async.waterfall([
-    cb => statement.all({ $key: key }, cb),
-    (rows, cb) => async.map(rows, sqliteToRow, cb),
-  ], callback);
-}
+    cb => client.logQuery({
+      name: 'dirs-select-keys',
+      text: `SELECT DISTINCT subpath(key, 0, nlevel($1) + 1) AS key FROM keys
+             WHERE (key ~ $2) AND (visible OR $3)
+             ORDER BY key`,
+      values: [ spec.key, spec.key ? `${spec.key}.*{2,}` : '*{2,}', spec.hidden ],
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+  ], done);
+})));
 
-Omnivore.prototype.get = exclusive(Omnivore.prototype._get = function _get(user, spec, callback) {
-  log.info({ user: user, spec: spec }, 'get');
-  assert(xtype.isNull(user) || (xtype.isString(user) && user_regex.test(user)));
-  assert(xtype.isSinglePropObject(spec));
-  assert(xtype.isFunction(callback));
+// TODO TEST
+// get child keys
+Omnivore.prototype.leaves = client(transaction(
+                            types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
+                            Omnivore.prototype._leaves = function _leaves(client, spec, done) {
+  // console.log('leaves', spec);
   
-  let statement;
-  if (spec.key) {
-    statement = user ? this.statements.select.userGrade : this.statements.select.grades;
-  } else if (spec.parent) {
-    statement = this.statements.select.gradeChildren;
-  } else if (spec.input) {
-    statement = this.statements.select.gradeOutputs;
-  } else if (spec.output) {
-    statement = user ? this.statements.select.userGradeInputs : this.statements.select.gradeInputs;
-  } else if (spec.history) {
-    statement = this.statements.select.history;
-  } else {
-    assert(false);
-  }
-  let key = spec.key || spec.parent || spec.input || spec.output || spec.history;
-  assert(xtype.isString(key) && key_regex.test(key));
-  
-  let self = this;
-  statement.all({ $user: user, $key: key }, (err, rows) => {
-    if (err) { return callback(err); }
-    self._compute(rows.map(sqliteToRowSync), callback);
-  });
-})
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'leaves-select-keys',
+      text: `SELECT * FROM keys LEFT JOIN key_orders USING (key)
+             WHERE (key ~ $1) AND (visible OR $2)
+             ORDER BY key_order, key`,
+      values: [ spec.key ? `${spec.key}.*{1}` : '*{1}', spec.hidden ],
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+  ], done);
+})));
 
-Omnivore.prototype._compute = function _compute(rows, callback) {
-  assert(xtype.isArray(rows) && xtype.all.isObject(rows));
-  assert(xtype.isFunction(callback));
+// TODO TEST
+// get history
+Omnivore.prototype.history = client(transaction(
+                             types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
+                             Omnivore.prototype._history = function _history(client, spec, done) {
+  //console.log('history', spec);
   
-  let self = this;
-  async.mapSeries(rows, (row, cb) => { // XXX map
-    if ( ! (row.value === null && row.compute)) {
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'history-select-history',
+      text: `SELECT * FROM history
+             WHERE ($1 IS NULL OR username = $1) AND ($2 IS NULL OR key = $2) AND (visible OR $3)
+             ORDER BY username, key, created DESC`,
+      types: [ types.pg.TEXT, types.pg.LTREE, types.pg.BOOL ],
+      values: [ spec.username, spec.key, spec.hidden ],
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+  ], done);
+})));
+
+Omnivore.prototype.inputs = client(transaction(
+                            types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
+                            Omnivore.prototype._inputs = function _inputs(client, spec, done) {
+  //console.log('inputs', spec);
+  
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'io-select-grades-inputs',
+      text: `SELECT * FROM grades
+             WHERE (username = $1) AND (key ? (SELECT inputs FROM computations WHERE output = $2)) AND (visible OR $3)
+             ORDER BY username, key`,
+      values: [ spec.username, spec.key, spec.hidden ],
+    }, cb),
+    (result, cb) => this._current(client, result.rows, cb),
+  ], done);
+})));
+
+Omnivore.prototype.outputs = client(transaction(
+                             types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
+                             Omnivore.prototype._outputs = function _outputs(client, spec, done) {
+  //console.log('outputs', spec);
+  
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'io-select-grades-outputs',
+      text: `SELECT * FROM grades
+             WHERE (username = $1) AND ($2 ? inputs) AND (visible OR $3)
+             ORDER BY username, key`,
+      types: [ types.pg.TEXT, types.pg.LTREE, types.pg.BOOL ],
+      values: [ spec.username, spec.key, spec.hidden ],
+    }, cb),
+    (result, cb) => this._current(client, result.rows, cb),
+  ], done);
+})));
+
+Omnivore.prototype._current = types.check([ pg.Client, 'row_array' ], [ 'row_array' ],
+                              function _current(client, rows, done) {
+  //console.log('current', rows);
+  
+  async.map(rows, (row, cb) => {
+    if (row.created) {
       return cb(null, row);
     }
-    async.waterfall([
-      cb => self._get(row.user, { output: row.key }, cb),
-      (rows, cb) => self._evaluate(row, rows, cb),
-      (value, cb) => self.statements.insert.computed.run({
-        $user: row.user,
-        $key: row.key,
-        $type: xtype.type(value),
-        $value: value,
-      }, cb),
-      cb => self.statements.select.userGrade.get({
-        $user: row.user,
-        $key: row.key,
-      }, cb),
-      sqliteToRow,
-    ], cb);
-  }, callback);
-}
+    if (row.raw_data) {
+      return this._data(client, row, cb);
+    }
+    if (row.output) {
+      return this._computed(client, row, cb);
+    }
+    // no raw data and not a computed value
+    return cb(null, row);
+  }, done);
+});
 
-Omnivore.prototype._evaluate = function _evaluate(output, inputs, callback) {
-  log.info({ output: output }, '_evaluate');
-  assert(xtype.isObject(output));
-  assert(xtype.isArray(inputs) && xtype.all.isObject(inputs));
-  assert(xtype.isFunction(callback));
+Omnivore.prototype._data = types.check([ pg.Client, 'row' ], [ 'row' ],
+                           function _data(client, row, done) {
+  //console.log('data', row);
   
-  if (inputs.length === 0) {
-    return callback(null, 0);
+  async.waterfall([
+    cb => this._getCurrent(client, row, cb),
+    (row, cb) => this._penalize(client, row, cb),
+    (row, cb) => client.logQuery({
+      name: 'data-insert-current_data',
+      text: 'INSERT INTO current_data (username, key, ts, value, penalty_applied, agent) VALUES ($1, $2, $3, $4, $5, $6)',
+      values: [ row.username, row.key, row.ts, JSON.stringify(row.value), row.penalty_applied, row.agent ],
+    }, cb),
+    (_, cb) => this._get(client, { username: row.username, key: row.key, hidden: true }, cb),
+    (rows, cb) => {
+      assert(rows.length == 1);
+      cb(null, Object.assign({}, row, rows[0]));
+    }
+  ], done);
+});
+
+Omnivore.prototype._getCurrent = types.check([ pg.Client, 'row' ], [ 'row' ],
+                                 function _getCurrent(client, row, done) {
+  //console.log('getCurrent', row);
+  
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'getCurrent-select-raw_grades',
+      text: `SELECT * FROM raw_grades WHERE username = $1 AND key = $2`,
+      values: [ row.username, row.key ],
+    }, cb),
+    (result, cb) => {
+      assert(result.rows.length == 1);
+      cb(null, Object.assign({}, row, result.rows[0]));
+    },
+  ], done);
+});
+
+Omnivore.prototype._penalize = types.check([ pg.Client, 'row' ], [ 'row' ],
+                               function _penalize(client, row, done) {
+  //console.log('penalize', row);
+  
+  if (( ! row.deadline) || (row.ts <= row.deadline)) {
+    return done(null, row);
   }
   
-  let computed = this.setup.computed.find(
-    computed => minimatch(output.key, computed.in + computed.compute));
+  let fn = this._functions[row.penalize] || this._prepare(row.penalize);
+  let context = { args: [ row.deadline, row.ts, row.value ] };
+  
+  done(null, Object.assign({}, row, {
+    value: fn.runInNewContext(context),
+    penalty_applied: row.penalty_id,
+  }));
+});
+
+Omnivore.prototype._computed = types.check([ pg.Client, 'row' ], [ 'row' ],
+                               function _computed(client, row, done) {
+  //console.log('computed', row);
+  
+  async.waterfall([
+    cb => this._getMatches(client, row.username, row.inputs, cb),
+    (inputs, cb) => this._evaluate(row, inputs, cb),
+    (row, cb) => this._penalize(client, row, cb),
+    (row, cb) => client.logQuery({
+      name: 'computed-insert-current_computed',
+      text: 'INSERT INTO current_computed (username, key, ts, value, penalty_applied) VALUES ($1, $2, $3, $4, $5)',
+      values: [ row.username, row.key, row.ts, JSON.stringify(row.value), row.penalty_applied ],
+    }, cb),
+    (_, cb) => this._get(client, { username: row.username, key: row.key, hidden: true }, cb),
+    (rows, cb) => {
+      assert(rows.length == 1);
+      cb(null, Object.assign({}, row, rows[0]));
+    },
+  ], done);
+});
+
+Omnivore.prototype._getMatches = types.check([ pg.Client, 'null,username', 'key_array' ], [ 'row_array' ],
+                                 function _getMatches(client, username, queries, done) {
+  //console.log('getMatches', queries);
+  
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'getMatches-select-grades',
+      text: `SELECT * FROM
+             (SELECT * FROM grades WHERE ($1 IS NULL OR username = $1) AND (key ? $2) AND active) AS grades
+             JOIN
+             (SELECT * FROM UNNEST($2) WITH ORDINALITY AS query) AS queries ON (key ~ query)
+             ORDER BY ordinality, key`,
+      types: [ types.pg.TEXT, types.pg.LQUERYarray ],
+      values: [ username, queries ],
+    }, cb),
+    (result, cb) => this._current(client, result.rows, cb),
+  ], done);
+});
+
+const lquery_ops_regex = /[@*%|!]/;
+
+Omnivore.prototype._evaluate = types.check([ 'row', 'row_array' ], [ 'row' ],
+                               function _evaluate(output, inputs, done) {
+  //console.log('evaluate', output.key, output.inputs, inputs);
+  
+  if ( ! inputs.length) {
+    return done(null, output);
+  }
+  
+  let ts = inputs.map(i => i.ts).reduce((a, b) => a > b ? a : b);
+  
   let rows = {};
-  let args = computed.from.map(from => {
-    rows[from] = inputs.filter(input => minimatch(input.key, computed.in + from));
-    let vals = rows[from].map(input => input.value);
-    if (from.indexOf('*') >= 0) { return vals; }
+  let args = output.inputs.map(query => {
+    let matched = rows[types.convertOut(query, 'key')] = types.convertOut(inputs.filter(input => input.query == query), 'row_array');
+    let vals = matched.map(input => input.value);
+    if (lquery_ops_regex.test(query)) { return vals; }
     assert(vals.length <= 1);
     return vals[0];
   });
+  
+  let fn = this._functions[output.compute] || this._prepare(output.compute);
   let context = {
-    rows: rows,
-    sum: arr => Array.prototype.slice.call(arr).reduce((a, b) => a + b, 0),
+    args,
+    rows,
+    sum: arr => arr.reduce((a, b) => a + b, 0),
+    console,
+    assert,
   };
-  let value = computed.as.apply(context, args);
   
-  return callback(null, value);
-}
+  done(null, Object.assign({}, output, { ts, value: fn.runInNewContext(context) }));
+});
 
-Omnivore.prototype.multiget = exclusive(Omnivore.prototype._multiget = function _multiget(user, spec, callback) {
-  log.info({ user: user, spec: spec }, 'multiget');
-  assert(xtype.isNull(user) || (xtype.isString(user) && user_regex.test(user)));
-  assert(xtype.isSinglePropObject(spec));
-  assert(xtype.isArray(spec.keys));
-  assert(xtype.isFunction(callback));
+Omnivore.prototype._prepare = function _prepare(fn) {
+  types.assert(fn, 'string');
   
-  let results = [];
-  let users = {};
-  
-  let self = this;
-  async.eachSeries(spec.keys, (key, cb) => {
-    self._get(user, { key: key }, (err, rows) => {
-      if (err) { return cb(err); }
-      for (let row of rows) {
-        if ( ! users[row.user]) { results.push(users[row.user] = { user: row.user }); }
-        users[row.user][key] = row;
-      }
-      cb();
-    });
-  }, err => callback(err, results));
-})
+  return this._functions[fn] = new vm.Script('(' + fn + ')(...args)', {
+    filename: `<${fn}>`,
+    timeout: 1000,
+  });
+};
 
-let sqliteToRow = async.asyncify(sqliteToRowSync);
-function sqliteToRowSync(row) {
-  assert(xtype.isObject(row));
-  
-  if (row.hasOwnProperty('value')) {
-    switch (row.type) {
-      case null:
-        assert(row.value === null);
-        break;
-      case 'string':
-        break;
-      case 'number':
-        row.value = parseFloat(row.value);
-        break;
-      case 'boolean':
-        assert(row.value === 0 || row.value === 1);
-        row.value = row.value === 1;
-        break;
-    }
-  }
-  for (let date of [ 'due', 'ts' ]) {
-    if (row.hasOwnProperty(date)) { row[date] = sqliteToDate(row[date]); }
-  }
-  for (let bool of [ 'active', 'children', 'compute', 'computed', 'leaf', 'visible' ]) {
-    if (row.hasOwnProperty(bool)) { row[bool] = row[bool] === 1; }
-  }
-  
-  return row;
-}
+Omnivore.prototype.staff = client(
+                           types.check([ pg.Client ], [ Set ],
+                           function _staff(client, done) {
+  client.logQuery({
+    name: 'staff-select-staff',
+    text: 'SELECT username FROM staff',
+  }, (err, result) => {
+    if (err) { return done(err); }
+    done(null, new Set(result.rows.map(row => row.username)));
+  });
+}));
 
-function sqliteToDate(ts) {
-  assert(xtype.isNull(ts) || xtype.isString(ts));
-  
-  if (ts === null) { return ts; }
-  return new Date(ts.replace(/ /, 'T') + 'Z');
-}
+Omnivore.prototype.users = client(
+                           types.check([ pg.Client ], [ 'array' ],
+                           function _users(client, done) {
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'users-select-users',
+      text: 'SELECT * FROM users ORDER BY on_roster, username',
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+  ], done);
+}));
 
-exports.toCSV = function toCSV(value) {
-  switch (xtype.type(value)) {
-    case 'null':
-    case 'string':
-    case 'number': return value;
-    case 'boolean': return { toJSON: () => value };
-    default: assert(false);
-  }
-}
+// add an active rule
+Omnivore.prototype.active = client(transaction(
+                            types.translate([ pg.Client, 'key', Date ], [ 'any' ],
+                            function _active(client, pattern, after, done) {
+  //console.log('active', pattern, after);
+  client.logQuery({
+    name: 'active-insert-active_rules',
+    text: 'INSERT INTO active_rules (keys, after) VALUES ($1, $2)',
+    values: [ pattern, after ],
+  }, done);
+})));
 
-exports.fromCSV = function fromCSV(value) {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return value;
-}
+// add a visible rule
+Omnivore.prototype.visible = client(transaction(
+                             types.translate([ pg.Client, 'key', Date ], [ 'any' ],
+                             function _visible(client, pattern, after, done) {
+  //console.log('visible', pattern, after);
+  client.logQuery({
+    name: 'visible-insert-visible_rules',
+    text: 'INSERT INTO visible_rules (keys, after) VALUES ($1, $2)',
+    values: [ pattern, after ],
+  }, done);
+})));
+
+// add a deadline penalty function
+Omnivore.prototype.penalty = client(transaction(
+                            types.check([ pg.Client, 'string', 'string', 'function' ], [ 'any' ],
+                            function _penalty(client, name, description, lambda, done) {
+  client.logQuery({
+    name: 'penalty-insert-penalties',
+    text: 'INSERT INTO penalties (penalty_id, penalty_description, penalize) VALUES ($1, $2, $3)',
+    values: [ name, description, lambda ],
+  }, done);
+})));
+
+// add a deadline rule
+Omnivore.prototype.deadline = client(transaction(
+                              types.translate([ pg.Client, 'key', Date, 'string' ], [ 'any' ],
+                              function _deadline(client, pattern, deadline, penalty, done) {
+  client.logQuery({
+    name: 'deadline-insert-deadline_rules',
+    text: 'INSERT INTO deadline_rules (keys, deadline, penalty_id) VALUES ($1, $2, $3)',
+    values: [ pattern, deadline, penalty ],
+  }, done);
+})));
+
+// add a computation rule
+Omnivore.prototype.compute = client(transaction(
+                          types.translate([ pg.Client, 'key', 'key', 'key_array', 'function' ], [ 'any' ],
+                          function _compute(client, base, output, inputs, lambda, done) {
+  //console.log('compute', base, output, inputs, lambda);
+  client.logQuery({
+    name: 'compute-insert-computation_rules',
+    text: 'INSERT INTO computation_rules (base, output, inputs, compute) VALUES ($1, $2, $3, $4)',
+    values: [ base, output, inputs, lambda ],
+  }, done);
+})));
+
+Omnivore.prototype.cron = client(
+                          Omnivore.prototype._cron = function _cron(client, done) {
+  //console.log('cron');
+  client.query(db_update, done);
+});
