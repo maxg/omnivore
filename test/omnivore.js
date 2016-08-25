@@ -261,7 +261,6 @@ describe('Omnivore', function() {
           cb => omni.add('tester', 'alice', '/test/alpha/left', now, 100, cb),
           cb => omni.get({ username: 'alice', key: '/test/right' }, cb),
           cb => omni.add('tester', 'alice', '/test/beta/left', new Date(), 70, cb),
-          //cb => omni.pg((client, done) => client.query('select * from keys', (err, result) => console.log(result.rows) || done()), cb),
           cb => omni.get({ username: 'alice', key: '/test/right' }, cb),
         ], bail(done, results => {
           results[1].should.read([ { value: 50 } ]);
