@@ -8,5 +8,8 @@
   "openstack_flavor": "FLAVOR_ID",
   "openstack_secgroup": "SECGROUP_NAME",
   
+  "deploy_openstack_flavor": "FLAVOR_ID",
+  "deploy_openstack_key": "KEY_NAME",
+  
   "app": "omnivore"
 }
