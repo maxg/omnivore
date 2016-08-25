@@ -176,7 +176,7 @@ exports.createApp = function createApp(omni) {
       }
     });
   });
-  app.get('/u/:username/:key(*)/', authorize, (req, res, next) => res.redirect(301, `/${omni.course}${req.path.slice(0, -1)}`));
+  app.get('/u/:username/:key(*)/', (req, res, next) => res.redirect(301, `/${omni.course}${req.path.slice(0, -1)}`));
   app.get('/u/:username', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
   app.get('/user/*', (req, res, next) => res.redirect(301, `/${omni.course}${req.path.replace('/user', '/u/' + res.locals.authuser)}`));
   app.get('/user', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
@@ -209,9 +209,9 @@ exports.createApp = function createApp(omni) {
       }
     });
   });
-  app.get('/grades/:key(*)/', authorize, (req, res, next) => res.redirect(301, `/${omni.course}${req.path.slice(0, -1)}`));
+  app.get('/grades/:key(*)/', (req, res, next) => res.redirect(301, `/${omni.course}${req.path.slice(0, -1)}`));
   
-  app.get('/grades/:keys(*).csv', authorize, (req, res, next) => {
+  app.get('/grades/:keys(*).csv', staffonly, (req, res, next) => {
     let prefix = omnivore.types.common(req.params.keys).slice(1);
     let filename = `${omni.course}-${prefix || 'grades'}.csv`.replace(/\//g, '-');
     let spec = { hidden: true };
