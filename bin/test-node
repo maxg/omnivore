@@ -4,8 +4,11 @@
 # Run Node tests.
 #
 
-dropdb --if-exists TEST.APP/ia00
-dropdb --if-exists TEST.OMNIVORE/ia00
+(
+    export PGOPTIONS='--client-min-messages=WARNING'
+    dropdb --if-exists TEST.APP/ia00
+    dropdb --if-exists TEST.OMNIVORE/ia00
+)
 
 export NODE_ENV=test
 

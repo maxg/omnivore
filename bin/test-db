@@ -6,16 +6,24 @@
 
 set -e
 
+shopt -s nullglob
+
 psql='psql -q -d T.001/ia00 --set=ON_ERROR_STOP=1'
 
-dropdb --if-exists T.001/ia00
+PGOPTIONS='--client-min-messages=WARNING' dropdb --if-exists T.001/ia00
 createdb T.001/ia00
 $psql -f config/schema.sql
 $psql -f test/fixtures/base.sql
 
-for test in test/db/*.sql; do
-    echo -n "$(basename $test .sql) " &&
-    $psql -f <(cat <(echo -n 'BEGIN; DO $$ DECLARE result RECORD; BEGIN ') $test <(echo 'END $$; ROLLBACK;')) &&
-    echo OK ||
-    echo FAILED
-done
+tests=(test/db/*.sql)
+{
+    echo 1..${#tests[@]}
+    for test in ${tests[@]}; do
+        $psql -f <(cat \
+            <(echo -n 'BEGIN; DO $$ DECLARE result RECORD; BEGIN ') $test \
+            <(echo 'END $$; ROLLBACK;')) &&
+        echo -n ok ||
+        echo -n not ok
+        echo " $(basename $test .sql)"
+    done
+} | node_modules/.bin/tap-mocha-reporter spec
