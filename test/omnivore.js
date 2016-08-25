@@ -681,10 +681,10 @@ describe('Omnivore', function() {
     });
   });
   
-  describe('#staff()', () => {
+  describe('#allStaff()', () => {
     
     it('should return staff', done => {
-      omni.staff(bail(done, result => {
+      omni.allStaff(bail(done, result => {
         result.should.read(new Set([ 'staffer' ]));
         done();
       }));
@@ -692,9 +692,9 @@ describe('Omnivore', function() {
     
     it('should memoize staff', done => {
       async.series([
-        cb => omni.memo.staff(cb),
-        cb => { sandbox.stub(omni, 'staff').throws(); cb(); },
-        cb => omni.memo.staff(cb),
+        cb => omni.memo.allStaff(cb),
+        cb => { sandbox.stub(omni, 'allStaff').throws(); cb(); },
+        cb => omni.memo.allStaff(cb),
       ], bail(done, results => {
         results[0].should.read(new Set([ 'staffer' ]));
         results[2].should.read(new Set([ 'staffer' ]));
@@ -703,7 +703,7 @@ describe('Omnivore', function() {
     });
   });
   
-  describe('#users()', () => {
+  describe('#allUsers()', () => {
     
     beforeEach(done => {
       async.series([
@@ -713,7 +713,7 @@ describe('Omnivore', function() {
     });
     
     it('should return users', done => {
-      omni.users(bail(done, result => {
+      omni.allUsers(bail(done, result => {
         result.should.read([
           { username: 'alice' },
           { username: 'bob' },

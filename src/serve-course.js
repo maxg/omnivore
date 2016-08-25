@@ -103,7 +103,7 @@ exports.createApp = function createApp(omni) {
     let authuser = res.locals.authuser = req.header(x_auth_user);
     if ( ! authuser) { return next(`missing ${x_auth_user} header`); }
     res.set(x_auth_user, authuser);
-    omni.memo.staff((err, staff) => {
+    omni.memo.allStaff((err, staff) => {
       if (err) { return next(err); }
       res.locals.authstaff = staff.has(authuser);
       next();
@@ -229,7 +229,7 @@ exports.createApp = function createApp(omni) {
   });
   
   app.get('/users/', staffonly, (req, res, next) => {
-    omni.users((err, users) => {
+    omni.allUsers((err, users) => {
       if (err) { return next(err); }
       res.render('staff-users', { users });
     });

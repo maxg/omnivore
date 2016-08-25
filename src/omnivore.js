@@ -68,7 +68,7 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config) {
     this.emit('ready');
   });
   
-  this._memo('staff');
+  this._memo('allStaff');
   if (this.config.debug_function_time) {
     this._time(
       '_add', '_multiadd',
@@ -566,11 +566,11 @@ Omnivore.prototype._prepare = function _prepare(fn) {
   });
 };
 
-Omnivore.prototype.staff = client(
+Omnivore.prototype.allStaff = client(
                            types.check([ pg.Client ], [ Set ],
                            function _staff(client, done) {
   client.logQuery({
-    name: 'staff-select-staff',
+    name: 'allStaff-select-staff',
     text: 'SELECT username FROM staff',
   }, (err, result) => {
     if (err) { return done(err); }
@@ -578,12 +578,12 @@ Omnivore.prototype.staff = client(
   });
 }));
 
-Omnivore.prototype.users = client(
+Omnivore.prototype.allUsers = client(
                            types.check([ pg.Client ], [ 'array' ],
                            function _users(client, done) {
   async.waterfall([
     cb => client.logQuery({
-      name: 'users-select-users',
+      name: 'allUsers-select-users',
       text: 'SELECT * FROM users ORDER BY on_roster, username',
     }, cb),
     (result, cb) => cb(null, result.rows),
