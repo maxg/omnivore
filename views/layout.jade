@@ -36,17 +36,17 @@ html
       link(rel='stylesheet', href='/web/style.css')
   body(class=[ errorpage ? 'errorpage' : null, staffpage ? 'staffpage' : null ])
     nav.navbar.navbar-fixed-top
-      .container
+      div(class=[ fullpage ? 'container-fluid' : 'container' ])
         p.navbar-text
           if course
             a.navbar-link(href='/'+course) Omnivore #{course}
           else
             a.navbar-link(href='/') Omnivore
         p.navbar-text.navbar-right #{authuser}
-    .container
+    div(class=[ fullpage ? 'container-fluid' : 'container' ])
       block content
     nav.navbar.navbar-bottom
-      .container
+      div(class=[ fullpage ? 'container-fluid' : 'container' ])
         p.navbar-text.nom
         p.navbar-text.navbar-right MIT EECS
     block scripts

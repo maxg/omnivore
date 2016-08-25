@@ -147,5 +147,38 @@ a.csv::before { content: '[csv]'; }
 
 .roster[data-on]::before { content: '[*]'; }
 
+*[data-invalid] {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+table.sheet {
+  font-size: 15px;
+}
+
+table.sheet th {
+  height: 15em;
+  vertical-align: bottom;
+  white-space: nowrap;
+  transform: translate(.8em) rotate(-20deg);
+  transform-origin: left bottom;
+}
+table.sheet th a {
+  display: block;
+  width: 3em;
+}
+
+table.sheet td.value[data-type=none] {
+  background: rgba(235, 127, 0, 0.3);
+}
+table.sheet td.value[data-type=boolean] {
+  background: rgba(22, 149, 163, 0.3);
+}
+table.sheet td.value[data-type=string] {
+  font-size: 10px;
+  min-width: 10em;
+  background: rgba(22, 149, 163, 0.1);
+}
+
 .nom:after { content: '\2014'; }
 .nom.nom-nom:after { content: '<'; }

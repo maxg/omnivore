@@ -8,15 +8,18 @@ const util = require('util');
 const async = require('async');
 const body_parser = require('body-parser');
 const cookie_parser = require('cookie-parser');
-const csv = require('csv');
 const express = require('express');
+const multer = require('multer');
 const response_time = require('response-time');
+const uuid = require('node-uuid');
 
 const logger = require('./logger');
 const omnivore = require('./omnivore');
 
 const x_auth_user = exports.x_auth_user = 'X-Authenticated-User';
 const x_omni_sign = exports.x_omni_sign = 'X-Omnivore-Signed';
+
+const upload_id_regex = /\w{8}(-\w{4}){3}-\w{12}/;
 
 // create a web frontend for an Omnivore backend
 exports.createApp = function createApp(omni) {
@@ -55,6 +58,10 @@ exports.createApp = function createApp(omni) {
     if ( ! keys.every(key => omnivore.types.is(key, 'key_path'))) { return next('route'); }
     req.params.keys = keys;
     next();
+  });
+  
+  app.param('upload_id', (req, res, next, keys) => {
+    next(upload_id_regex.test(req.params.upload_id) ? null : 'route');
   });
   
   app.locals.course = omni.course;
@@ -218,13 +225,9 @@ exports.createApp = function createApp(omni) {
     omni.multiget(req.params.keys, spec, (err, rows) => {
       if (err) { return next(err); }
       res.attachment(filename);
-      let sheet = csv.stringify({ quotedString: true });
-      sheet.pipe(res);
-      sheet.write([ 'username', ...req.params.keys, `exported ${new Date().toISOString()} by ${res.locals.authuser}` ]);
-      for (let row of rows) {
-        sheet.write([ row.username, ...req.params.keys.map(key => row[key].value) ]);
-      }
-      sheet.end();
+      omnivore.csv.stringify(req.params.keys, rows, [
+        `exported ${omnivore.types.dateTimeString(new Date())} by ${res.locals.authuser}`
+      ]).pipe(res);
     });
   });
   

@@ -63,6 +63,10 @@ xtype.ext.registerType({
   row_array: { definition: { validator: val => xtype.isArray(val) && xtype.all.isRow(val) } },
 });
 
+const whichType = exports.which = function which(val, types) {
+  return xtype.which(val, types);
+};
+
 const isType = exports.is = function is(val, type) {
   return xtype.is(val, type);
 };

@@ -5,6 +5,7 @@ const fs = require('fs');
 const http = require('http');
 
 const async = require('async');
+const csv = require('csv');
 const request = require('request');
 const should = require('should');
 const sinon = require('sinon');

@@ -1,0 +1,17 @@
+extends layout
+
+append head
+  title Saved Grades - #{course} - Omnivore
+
+append content
+  
+  .staff
+    p Saved grades
+  
+  table.sheet
+    tbody
+      each row in entries
+        tr
+          td.user: a(href='/#{course}/u/#{row.username}')= row.username
+          td.key: a(href='/#{course}/u/#{row.username}#{row.key}'): +key(row.key)
+          td.value: +value(row.value)

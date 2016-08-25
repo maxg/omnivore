@@ -21,6 +21,8 @@ const db_update = fs.readFileSync('./config/update.sql', { encoding: 'utf-8' });
 const signature_algorithm = exports.signature_algorithm = 'RSA-SHA256';
 const signature_encoding = exports.signature_encoding = 'base64';
 
+exports.csv = require('./omnivore-csv');
+
 // create a new Omnivore
 //   instance emits 'ready' event when usable
 const Omnivore = exports.Omnivore = function Omnivore(course, config) {

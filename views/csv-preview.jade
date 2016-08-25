@@ -1,0 +1,38 @@
+extends layout
+
+append head
+  title Upload Grades - #{course} - Omnivore
+
+append content
+  
+  table.sheet.pull-right
+    tbody
+      tr
+        td.value(data-type='number') number
+        td.value(data-type='string') text
+        td.value(data-type='boolean') boolean
+        td.value(data-type='none') missing
+  
+  .staff
+    p Previewing uploaded grades
+    p
+      | created by #{upload.username}
+      br
+      | expires #{upload.timeout}
+    p To save these grades:
+    
+    form(method='post')
+      p: button.btn.btn-default Save
+  
+  table.sheet
+    thead
+      tr
+      th
+      each key in upload.keys
+        th.key: a(href='/#{course}/grades#{key}')= key
+    tbody
+      each row in upload.rows
+        tr(data-invalid=!row.valid)
+          td.user: a(href='/#{course}/u/#{row.username}')= row.username
+          each value in row.values
+            td.value(data-type=types.which(value, types.value_types)): +value(value)
