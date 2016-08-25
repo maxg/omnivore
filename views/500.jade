@@ -6,3 +6,6 @@ append head
 
 append content
   p 500 Internal Server Error
+  
+  if authstaff && err
+    p.pre-wrap= inspect(err)

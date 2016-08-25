@@ -69,6 +69,10 @@ body.staffpage nav.navbar {
   background: rgb(235, 127, 0);
 }
 
+.pre-wrap {
+  white-space: pre-wrap;
+}
+
 /* http://www.abeautifulsite.net/whipping-file-inputs-into-shape-with-bootstrap-3/ */
 .btn-file {
   position: relative;

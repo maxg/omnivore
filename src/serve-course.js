@@ -3,6 +3,7 @@
 const assert = require('assert');
 const http = require('http');
 const path = require('path');
+const util = require('util');
 
 const async = require('async');
 const body_parser = require('body-parser');
@@ -30,6 +31,7 @@ exports.createApp = function createApp(omni) {
   app.set('x-powered-by', false);
   
   app.locals.path = path;
+  app.locals.inspect = util.inspect;
   app.locals.types = omnivore.types;
   
   app.use(response_time());
@@ -238,7 +240,7 @@ exports.createApp = function createApp(omni) {
   
   app.use((err, req, res, next) => {
     log.error({ err }, 'app error');
-    res.status(500).render('500');
+    res.status(500).render('500', { err });
   });
   
   return app;

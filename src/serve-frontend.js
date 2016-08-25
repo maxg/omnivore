@@ -39,7 +39,7 @@ app.param('semester', (req, res, next, semester) => {
 app.get('/', (req, res) => res.render('root'));
 app.use('/:clazz/:semester', authenticate, course);
 app.all('*', (req, res) => res.status(404).render('404'));
-app.use((err, req, res) => {
+app.use((err, req, res, next) => {
   log.error({ err }, 'app error');
   res.status(500).render('500');
 });
@@ -115,7 +115,7 @@ proxy.on('proxyReq', (proxyReq, req, res) => {
 
 proxy.on('error', (err, req, res) => {
   log.error({ err }, 'proxy error');
-  res.status(500).render('500', { error: err });
+  res.status(500).render('500', { err });
 });
 
 const ssl = {
