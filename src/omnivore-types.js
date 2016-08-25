@@ -21,6 +21,8 @@ pg.types.setTypeParser(exports.pg.LQUERYarray, function parseLQUERYarray(val) {
   return pg.types.arrayParser.create(val, entry => entry).parse();
 });
 
+const value_types = exports.value_types = [ 'boolean', 'number', 'nan', 'string', 'value_array', 'value_object' ];
+
 // string restrictions
 const course_regex = /^[A-Z0-9]+\.[A-Z0-9]+\/(fa|ia|sp|su)\d\d$/;
 const agent_regex = /^\w+$/;
@@ -30,7 +32,13 @@ const key_ltree_regex = /^(\w+\*?|\*\{\d\})?(\.(\w+\*?|\*\{\d\}))*$/;
 const timestamp_regex = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{3})?(Z|\+0000)$/;
 
 xtype.ext.registerType({
-  something: { definition: { validator: val => ! xtype.isNothing(val) } },
+  value:     { definition: { validator: val => xtype.is(val, value_types) } },
+  value_array: { definition: { validator: val => {
+    return xtype.isArray(val) && val.every(elt => xtype.isValue(elt));
+  } } },
+  value_object: { definition: { validator: val => {
+    return xtype.isObject(val) && Object.keys(val).every(key => xtype.isValue(val[key]));
+  } } },
   course:    { definition: { validator: val => xtype.isString(val) && course_regex.test(val) } },
   agent:     { definition: { validator: val => xtype.isString(val) && agent_regex.test(val) } },
   username:  { definition: { validator: val => xtype.isString(val) && username_regex.test(val) } },

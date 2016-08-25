@@ -7,7 +7,7 @@ const xtype = require('xtypejs');
 
 should.Assertion.add('read', function(expect) {
   this.params = { operator: 'to read ' + should.format(expect) };
-  if (xtype.is(expect, [ 'null', 'boolean', 'integer', 'string' ])) {
+  if (xtype.is(expect, [ 'undefined', 'null', 'boolean', 'integer', 'string' ])) {
     return should(this.obj).equal(expect);
   }
   should.exist(this.obj);

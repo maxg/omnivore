@@ -34,7 +34,7 @@ describe('Omnivore', function() {
   describe('types', () => {
     
     new Map([
-      [ 'something', [
+      [ 'value', [
         [ false, true ],
         [ 0, true ],
         [ NaN, true ],
@@ -42,6 +42,12 @@ describe('Omnivore', function() {
         [ '', true ],
         [ null, false ],
         [ undefined, false ],
+        [ [ 1, '2' ], true ],
+        [ [ () => {} ], false ],
+        [ { 1: '2', 'three': [ 'four' ], '5': { } }, true ],
+        [ { x: null }, false ],
+        [ { y: new Date(0) }, false ],
+        [ { z: { a: /b/ } }, false ],
       ] ],
       [ 'course', [
         [ '6.005/fa15', true ],

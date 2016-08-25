@@ -229,7 +229,7 @@ Omnivore.prototype.parse = client(
 
 // add a data point
 Omnivore.prototype.add = client(transaction(
-                         types.translate([ pg.Client, 'agent', 'username', 'key', Date, 'something' ], [ 'any' ],
+                         types.translate([ pg.Client, 'agent', 'username', 'key', Date, 'value' ], [ 'any' ],
                          Omnivore.prototype._add = function _add(client, agent, username, key, ts, value, done) {
   //console.log('add', agent, username, key, ts, value);
   
