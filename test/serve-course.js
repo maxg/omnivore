@@ -58,14 +58,16 @@ describe('serve-course', function() {
   
   describe('POST /api/v2/multiadd', () => {
     
+    let url = '/api/v2/multiadd';
+    let username = 'alice';
+    let key = '/test/alpha';
+    let input = [ { username, key, ts: now, value: 100 } ];
+    let sign = crypto.createSign('RSA-SHA256');
+    sign.update(JSON.stringify(input));
+    let signature = sign.sign(fs.readFileSync('test/fixtures/key-private.pem'), 'base64');
+    
     it('should add data', done => {
-      let username = 'alice';
-      let key = '/test/alpha';
-      let input = [ { username, key, ts: now, value: 100 } ];
-      let sign = crypto.createSign('RSA-SHA256');
-      sign.update(JSON.stringify(input));
-      let signature = sign.sign(fs.readFileSync('test/fixtures/key-private.pem'), 'base64');
-      req.headers({ [x_omni_sign]: 'tester ' + signature }).post('/api/v2/multiadd', { json: input }, bail(done, (res) => {
+      req.headers({ [x_omni_sign]: 'tester ' + signature }).post(url, { json: input }, bail(done, res => {
         res.statusCode.should.eql(200);
         omni.get({ username, key, hidden: true }, bail(done, rows => {
           rows.should.read(input);
@@ -74,8 +76,15 @@ describe('serve-course', function() {
       }));
     });
     
-    it('should reject invalid signature');
-    
+    it('should reject invalid signature', done => {
+      req.headers({ [x_omni_sign]: 'tester x' + signature }).post(url, { json: input }, bail(done, res => {
+        res.statusCode.should.eql(403);
+        omni.get({ username, key, hidden: true }, bail(done, rows => {
+          rows.should.read([]);
+          done();
+        }));
+      }));
+    });
   });
   
   describe('GET /', () => {
@@ -251,7 +260,7 @@ describe('serve-course', function() {
       }));
     });
     
-    it('should render 404', done => {
+    it('should fail', done => {
       req.headers({ [x_auth_user]: 'bob' }).get(url, bail(done, (res, body) => {
         res.statusCode.should.eql(404);
         app.render.templates().should.eql([ '404' ]);
