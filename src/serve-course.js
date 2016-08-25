@@ -231,6 +231,65 @@ exports.createApp = function createApp(omni) {
     });
   });
   
+  const pending_uploads = {};
+  
+  app.post('/grades.csv', staffonly, multer().single('csv'), (req, res, next) => {
+    let timeout = 1000 * 60 * 60 * 24;
+    let upload_id = uuid.v4();
+    omnivore.csv.parse(req.file.buffer).once('parsed', (keys, rows) => {
+      pending_uploads[upload_id] = {
+        username: res.locals.authuser,
+        timeout: new Date(Date.now() + timeout),
+        keys,
+        rows,
+      };
+      setTimeout(() => delete pending_uploads[upload_id], timeout);
+      res.redirect(303, `/${omni.course}/grades.csv/${upload_id}`);
+    });
+  });
+  
+  app.get('/grades.csv/:upload_id', staffonly, (req, res, next) => {
+    let upload = pending_uploads[req.params.upload_id];
+    if ( ! upload) { return res.status(404).render('404'); }
+    
+    async.auto({
+      keys: cb => omni.keys(upload.keys, cb),
+      users: cb => omni.users(upload.rows.map(row => row.username), cb),
+    }, (err, results) => {
+      if (err) { return next(err); }
+      res.locals.fullpage = true;
+      res.render('csv-preview', {
+        upload: Object.assign({}, upload, {
+          keys: results.keys,
+          rows: upload.rows.map((row, idx) => Object.assign({}, row, results.users[idx])),
+        }),
+      });
+    });
+  });
+  
+  app.post('/grades.csv/:upload_id', staffonly, (req, res, next) => {
+    let upload = pending_uploads[req.params.upload_id];
+    if ( ! upload) { return res.status(404).render('404'); }
+    
+    let now = new Date();
+    let entries = Array.prototype.concat.call(...upload.rows.map(row => {
+      if ( ! row.valid) { return []; }
+      let entries = row.values.map((value, idx) => ({ key: upload.keys[idx], value }));
+      return entries.filter(entry => entry.value !== null).map(entry => ({
+        username: row.username,
+        key: entry.key,
+        ts: now,
+        value: entry.value,
+      }));
+    }));
+    
+    omni.multiadd(res.locals.authuser, entries, err => {
+      if (err) { return next(err); }
+      delete pending_uploads[req.params.upload_id];
+      res.render('csv-saved', { entries });
+    });
+  });
+  
   app.get('/users/', staffonly, (req, res, next) => {
     omni.allUsers((err, users) => {
       if (err) { return next(err); }

@@ -11,6 +11,7 @@ xtype.ext.registerExtension(require('xtypejs-extension-custom-types'));
 exports.pg = {
   BOOL: 16,
   TEXT: 25,
+  TEXTarray: 1009,
   LTREE: 16386, // XXX stable?
   LTREEarray: 16389, // XXX stable?
   LQUERY: 16440, // XXX stable?

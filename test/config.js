@@ -2,6 +2,8 @@
 
 const fs = require('fs');
 
+//const async = require('async');
+//const pg = require('pg');
 const should = require('should');
 const xtype = require('xtypejs');
 
@@ -40,6 +42,16 @@ should.Assertion.add('read', function(expect) {
   }
   should.fail(this.obj, expect, `cannot use should.read with ${xtype(expect)}`);
 });
+
+//global.dropdb = function dropdb(db, done) {
+//  async.waterfall([
+//    cb => pg.connect({ host: '/var/run/postgresql', database: 'postgres' }, cb),
+//    (client, done, cb) => client.query({
+//      text: 'DROP DATABASE $1',
+//      values: [ db ],
+//    }, err => { done(true); cb(err); }),
+//  ], done);
+//};
 
 global.fixtures = function fixtures(file) {
   return fs.readFileSync(`./test/fixtures/${file}.sql`, { encoding: 'utf-8' });

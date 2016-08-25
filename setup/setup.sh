@@ -56,6 +56,15 @@ pgbadger_zip="$pgbadger_tag.zip"
   perl Makefile.PL
   make
 )
+pg_conf="/etc/postgresql/$postgresql_version/main/postgresql.conf"
+cp "$pg_conf" "$pg_conf.bak"
+while read pg_config_line
+do
+  pg_config_option=${pg_config_line%% *}
+  sed -i "/^#$pg_config_option =/i \
+$pg_config_line" "$pg_conf"
+done < setup/postgresql.conf
+# XXX TODO log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
 
 # SSL
 (

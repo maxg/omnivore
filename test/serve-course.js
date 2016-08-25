@@ -86,6 +86,8 @@ describe('serve-course', function() {
         }));
       }));
     });
+    
+    // TODO agent
   });
   
   describe('GET /', () => {
@@ -361,24 +363,213 @@ describe('serve-course', function() {
   
   describe('GET /grades/:keys.csv', () => {
     
-    it('should require staff');
+    let single_url = '/grades/test/class-1/nanoquiz.csv';
+    let multi_url = '/grades/test/class-1/nanoquiz,/test/class-2/nanoquiz.csv';
     
-    it('should render single-grade CSV');
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(single_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
     
-    it('should render multi-grade CSV');
+    it('should render single-key CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(single_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        let date = omnivore.types.dateTimeString(new Date());
+        csv.parse(body, (err, sheet) => {
+          sheet.should.read([
+            [ 'username', '/test/class-1/nanoquiz', `exported ${date} by staffer` ],
+            [ 'alice', '10' ],
+            [ 'bob', '9' ],
+          ]);
+          done(err);
+        });
+      }));
+    });
     
+    it('should render multi-key CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(multi_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        let date = omnivore.types.dateTimeString(new Date());
+        csv.parse(body, (err, sheet) => {
+          sheet.should.read([
+            [ 'username', '/test/class-1/nanoquiz', '/test/class-2/nanoquiz', `exported ${date} by staffer` ],
+            [ 'alice', '10', '8' ],
+            [ 'bob', '9', '' ],
+          ]);
+          done(err);
+        });
+      }));
+    });    
   });
   
   describe('POST /grades.csv', () => {
     
-    it('should require staff');
+    let url = '/grades.csv';
+    let formData = { csv: { value: 'username\n', options: { filename: 'upload.csv' } } };
     
-    it('should add data');
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).post(url, { formData }, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
     
-    it('should ignore missing data');
+    it('should redirect to preview', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).post(url, { formData }, bail(done, res => {
+        res.statusCode.should.eql(303);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.startWith(`/${course}${url}/`);
+        done();
+      }));
+    });
+  });
+  
+  describe('GET /grades.csv/:upload_id', () => {
     
-    it('should render data');
+    let upload_url = '/grades.csv';
+    let formData = { csv: { value: 'username,/foo\nalice,12.3\n', options: { filename: 'upload.csv' } } };
+    let save_url;
     
+    before(done => {
+      req.headers({ [x_auth_user]: 'staffer' }).post(upload_url, { formData }, (err, res) => {
+        save_url = res.headers.location.replace(`/${course}`, '');
+        done(err);
+      });
+    });
+    
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(save_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
+    
+    it('should render data', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(save_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'csv-preview' ]);
+        body.should.match(/created by staffer/);
+        body.should.match(/\/foo/);
+        body.should.match(/alice.*12\.3/);
+        done();
+      }));
+    });
+    
+    it('should fail with missing upload', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(save_url.replace(/.{8}$/, '00000000'), bail(done, res => {
+        res.statusCode.should.eql(404);
+        app.render.templates().should.eql([ '404' ]);
+        done();
+      }));
+    });
+  });
+  
+  describe('POST /grades.csv/:upload_id', () => {
+    
+    function upload(data, done) {
+      let formData = { csv: { value: data, options: { filename: 'upload.csv' } } };
+      req.headers({ [x_auth_user]: 'staffer' }).post('/grades.csv', { formData }, (err, res) => {
+        done(err, res.headers.location.replace(`/${course}`, ''));
+      });
+    }
+    
+    let data = `username,/test/alpha,/test/beta
+                alice,1,2
+                bob,3,4`;
+    
+    it('should require staff', done => {
+      upload(data, bail(done, url => {
+        req.headers({ [x_auth_user]: 'alice' }).post(url, {}, bail(done, (res, body) => {
+          res.statusCode.should.eql(200);
+          app.render.templates().should.eql([ '401' ]);
+          body.should.match(/permission denied/);
+          done();
+        }));
+      }));
+    });
+    
+    it('should require agent', done => {
+      upload(data, bail(done, url => {
+        req.headers({ [x_auth_user]: 'staffer' }).post(url, {}, bail(done, (res, body) => {
+          res.statusCode.should.eql(500);
+          app.render.templates().should.eql([ '500' ]);
+          body.should.match(/violates foreign key constraint/);
+          done();
+        }));
+      }));
+    });
+    
+    function save(url, done) {
+      req.headers({ [x_auth_user]: 'super' }).post(url, bail(done, res => {
+        res.statusCode.should.eql(200);
+        omni.multiget([ '/test/*' ], { hidden: true }, done);
+      }));
+    }
+    
+    it('should add data', done => {
+      upload(data, bail(done, url => save(url, bail(done, rows => {
+        rows.should.read([
+          { username: 'alice', '/test/alpha': { value: 1 }, '/test/beta': { value: 2 } },
+          { username: 'bob', '/test/alpha': { value: 3 }, '/test/beta': { value: 4 } },
+        ]);
+        done();
+      }))));
+    });
+    
+    it('should ignore past invalid key', done => {
+      upload(`username,/test/alpha,test/beta,/test/gamma
+              alice,1,2,3`, bail(done, url => save(url, bail(done, rows => {
+        rows.should.read([
+          { username: 'alice', '/test/alpha': { value: 1 } },
+          { username: 'bob', '/test/alpha': { value: null } },
+        ]);
+        done();
+      }))));
+    });
+    
+    it('should ignore invalid users', done => {
+      upload(`username,/test/delta,
+              alice,1
+              +yolanda,2
+              zach,3`, bail(done, url => save(url, bail(done, rows => {
+        rows.should.read([
+          { username: 'alice', '/test/delta': { value: 1 } },
+          { username: 'bob', '/test/delta': { value: null } },
+          { username: 'zach', '/test/delta': { value: 3 } },
+        ]);
+        done();
+      }))));
+    });
+    
+    it('should ignore missing data', done => {
+      upload(`username,/test/alpha,/test/beta,
+              alice,,
+              bob,,0`, bail(done, url => save(url, bail(done, rows => {
+        rows.should.read([
+          { username: 'alice', '/test/alpha': undefined, '/test/beta': { value: null } },
+          { username: 'bob', '/test/alpha': undefined, '/test/beta': { value: 0 } },
+        ]);
+        done();
+      }))));
+    });
+    
+    it('should render data', done => {
+      upload(data, bail(done, url => req.headers({ [x_auth_user]: 'super' }).post(url, bail(done, (res, body) => {
+        body.should.match(/alice.*\/test\/alpha.*1/);
+        body.should.match(/alice.*\/test\/beta.*2/);
+        body.should.match(/bob.*\/test\/alpha.*3/);
+        body.should.match(/bob.*\/test\/beta.*4/);
+        done();
+      }))));
+    });
   });
   
   describe('GET /users/', () => {

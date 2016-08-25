@@ -592,6 +592,53 @@ Omnivore.prototype.allUsers = client(
   ], done);
 }));
 
+Omnivore.prototype.users = client(
+                           types.check([ pg.Client, 'array' ], [ 'array' ],
+                           function _users(client, usernames, done) {
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'users-select-users',
+      text: `SELECT * FROM UNNEST($1) WITH ORDINALITY AS username
+             NATURAL LEFT JOIN
+             (SELECT *, TRUE AS exists FROM users) users
+             ORDER BY ordinality`,
+      types: [ types.pg.TEXTarray ],
+      values: [ usernames ],
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+    (rows, cb) => cb(null, rows.map(row => Object.assign(row, {
+      exists: !! row.exists,
+    }))),
+  ], done);
+}));
+
+Omnivore.prototype.keys = client(
+                          types.translate([ pg.Client, 'key_array' ], [ 'row_array' ],
+                          function _keys(client, keys, done) {
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'keys-select-keys',
+      text: `SELECT keys.*, key, inputs.inputs, outputs.outputs FROM
+             UNNEST($1) WITH ORDINALITY AS key
+             NATURAL LEFT JOIN
+             (SELECT *, TRUE AS exists FROM keys) keys
+             LEFT JOIN
+             computations AS inputs ON (key = inputs.output)
+             NATURAL LEFT JOIN LATERAL
+             (SELECT key, ARRAY_AGG(output) AS outputs FROM computations WHERE (key ? inputs)) AS outputs
+             ORDER BY ordinality`,
+      types: [ types.pg.LTREEarray ],
+      values: [ keys ],
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+    (rows, cb) => cb(null, rows.map(row => Object.assign(row, {
+      exists: !! row.exists,
+      inputs: row.inputs ? types.convertOut(row.inputs, 'key_array') : [],
+      outputs: row.outputs ? types.convertOut(row.outputs, 'key_array') : [],
+    }))),
+  ], done);
+}));
+
 // add an active rule
 Omnivore.prototype.active = client(transaction(
                             types.translate([ pg.Client, 'key', Date ], [ 'any' ],

@@ -168,13 +168,13 @@ table.sheet th a {
   width: 3em;
 }
 
-table.sheet td.value[data-type=none] {
+table.sheet td[data-type=none] {
   background: rgba(235, 127, 0, 0.3);
 }
-table.sheet td.value[data-type=boolean] {
+table.sheet td[data-type=boolean] {
   background: rgba(22, 149, 163, 0.3);
 }
-table.sheet td.value[data-type=string] {
+table.sheet td[data-type=string] {
   font-size: 10px;
   min-width: 10em;
   background: rgba(22, 149, 163, 0.1);

@@ -128,6 +128,68 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('csv', () => {
+    
+    describe('#stringify()', () => {
+      
+      it('should export header row', done => {
+        let sheet = omnivore.csv.stringify([ '/a', '/b' ], [ ], [ 'my comment' ]);
+        sheet.setEncoding('utf-8');
+        sheet.read().should.eql('"username","/a","/b","my comment"\n');
+        done();
+      });
+      it('should export values', done => {
+        let sheet = omnivore.csv.stringify([ '/a', '/b' ], [
+          { username: 'alice', '/a': { value: 5 }, '/b': { value: '\'hello\'\n"there"' } },
+        ]);
+        sheet.setEncoding('utf-8');
+        sheet.read().should.eql('"username","/a","/b"\n"alice",5,"\'hello\'\n""there"""\n');
+        done();
+      });
+    });
+    
+    describe('#parse()', () => {
+      
+      it('should import values', done => {
+        let sheet = omnivore.csv.parse(`username,/a,/b,/c,/d
+                                        alice,5,"'hello'\n""there""",,true`);
+        sheet.once('parsed', (keys, rows) => {
+          keys.should.eql([ '/a', '/b', '/c', '/d' ]);
+          rows.should.read([ {
+            username: 'alice',
+            valid: true,
+            values: [ 5, '\'hello\'\n"there"', null, true ],
+          } ]);
+          done();
+        });
+      });
+      
+      it('should ignore past invalid key', done => {
+        let sheet = omnivore.csv.parse(`username,/a,/b,x,/c,/d
+                                        alice,1,2,3,4,5`);
+        sheet.once('parsed', (keys, rows) => {
+          keys.should.eql([ '/a', '/b' ]);
+          rows.should.read([ { username: 'alice', values: [ 1, 2 ] } ]);
+          done();
+        });
+      });
+      
+      it('should include invalid users', done => {
+        let sheet = omnivore.csv.parse(`username,/a
+                                        alice@mit,1
+                                        bob,2`);
+        sheet.once('parsed', (keys, rows) => {
+          keys.should.eql([ '/a' ]);
+          rows.should.read([
+            { username: 'alice@mit', valid: false, values: [ 1 ] },
+            { username: 'bob', valid: true, values: [ 2 ] },
+          ]);
+          done();
+        });
+      });
+    });
+  });
+  
   describe('#parse()', () => {
     
     it('should parse signed JSON', done => {
@@ -214,6 +276,8 @@ describe('Omnivore', function() {
         done();
       }));
     });
+    
+    // TODO agent
     
     context('computation', () => {
       
@@ -411,6 +475,8 @@ describe('Omnivore', function() {
         done();
       }));
     });
+    
+    // TODO agent
   });
   
   describe('#get()', () => {
@@ -760,6 +826,83 @@ describe('Omnivore', function() {
         result.should.read([
           { username: 'alice' },
           { username: 'bob' },
+        ]);
+        done();
+      }));
+    });
+  });
+  
+  describe('#users()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 10, cb),
+        cb => omni.add('tester', 'bob', '/test/beta', now, 20, cb),
+      ], done);
+    });
+    
+    it('should return users in order', done => {
+      omni.users([ 'bob', 'alice' ], bail(done, result => {
+        result.should.read([
+          { username: 'bob', on_roster: false },
+          { username: 'alice', on_roster: false },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should include nonexistent users', done => {
+      omni.users([ 'zach', 'bob', 'yolanda' ], bail(done, result => {
+        result.should.read([
+          { username: 'zach', exists: false },
+          { username: 'bob', exists: true },
+          { username: 'yolanda', exists: false },
+        ]);
+        done();
+      }));
+    });
+  });
+  
+  describe('#keys()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 100, cb),
+        cb => omni.add('tester', 'alice', '/test/gamma', t_plus(now, 1), 50, cb),
+        cb => omni.compute('/test', 'beta', [ 'alpha' ], alpha => alpha / 2, cb),
+        cb => omni.compute('/test', 'delta', [ 'alpha', 'gamma' ], (alpha, gamma) => alpha + gamma, cb),
+        cb => omni.active('/test/alpha', now, cb),
+        cb => omni.visible('/test/beta', now, cb),
+      ], done);
+    });
+    
+    it('should return keys in order', done => {
+      omni.keys([ '/test/alpha', '/test/beta', '/test/delta' ], bail(done, result => {
+        result.should.read([
+          { key: '/test/alpha', active: true, visible: false },
+          { key: '/test/beta', active: false, visible: true },
+          { key: '/test/delta', active: false, visible: false },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should return inputs and outputs', done => {
+      omni.keys([ '/test/alpha', '/test/delta' ], bail(done, result => {
+        result.should.read([
+          { key: '/test/alpha', inputs: [], outputs: [ '/test/beta', '/test/delta' ] },
+          { key: '/test/delta', inputs: [ '/test/alpha', '/test/gamma' ], outputs: [] },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should include nonexistent keys', done => {
+      omni.keys([ '/test/epsilon', '/test/gamma', '/test/omega' ], bail(done, result => {
+        result.should.read([
+          { key: '/test/epsilon', exists: false },
+          { key: '/test/gamma', exists: true },
+          { key: '/test/omega', exists: false },
         ]);
         done();
       }));
