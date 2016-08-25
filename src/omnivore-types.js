@@ -15,7 +15,11 @@ exports.pg = {
   LQUERY: 16440, // XXX stable?
   LQUERYarray: 16443, // XXX stable?
 };
-// use built-in array parser for LQUERY arrays
+// use built-in array parser for LTREE and LQUERY arrays
+pg.types.setTypeParser(exports.pg.LTREEarray, function parseLTREEarray(val) {
+  if ( ! val) { return null; }
+  return pg.types.arrayParser.create(val, entry => entry).parse();
+});
 pg.types.setTypeParser(exports.pg.LQUERYarray, function parseLQUERYarray(val) {
   if ( ! val) { return null; }
   return pg.types.arrayParser.create(val, entry => entry).parse();
@@ -27,8 +31,9 @@ const value_types = exports.value_types = [ 'boolean', 'number', 'nan', 'string'
 const course_regex = /^[A-Z0-9]+\.[A-Z0-9]+\/(fa|ia|sp|su)\d\d$/;
 const agent_regex = /^\w+$/;
 const username_regex = /^\w+$/;
-const key_path_regex = /^(\/|([\w-]+\*?|\*)?(\/([\w-]+\*?|\*))*)$/;
-const key_ltree_regex = /^(\w+\*?|\*\{\d\})?(\.(\w+\*?|\*\{\d\}))*$/;
+const key_path_regex = /^(\/|(\/[\w-]+)+)$/;
+const key_path_query_regex = /^(\/|([\w-]+\*?|\*)?(\/([\w-]+\*?|\*))*)$/;
+const key_ltree_query_regex = /^(\w+\*?|\*\{\d\})?(\.(\w+\*?|\*\{\d\}))*$/;
 const timestamp_regex = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{3})?(Z|\+0000)$/;
 
 xtype.ext.registerType({
@@ -45,7 +50,8 @@ xtype.ext.registerType({
   maybe_username: { definition: 'undefined, username' },
   key:       { definition: { validator: val => xtype.isString(val) } },
   key_path:  { definition: { validator: val => xtype.isString(val) && key_path_regex.test(val) } },
-  key_ltree: { definition: { validator: val => xtype.isString(val) && key_ltree_regex.test(val) } },
+  key_path_query:  { definition: { validator: val => xtype.isString(val) && key_path_query_regex.test(val) } },
+  key_ltree_query: { definition: { validator: val => xtype.isString(val) && key_ltree_query_regex.test(val) } },
   maybe_key: { definition: 'undefined, key' },
   key_array: { definition: { validator: val => xtype.isArray(val) && xtype.all.isKey(val) } },
   timestamp: { definition: { validator: val => xtype.isString(val) && timestamp_regex.test(val) } },
@@ -72,7 +78,7 @@ const convertIn = exports.convertIn = function convertIn(val, type) {
   assertType(val, type);
   switch (type) {
     case 'key':
-      assertType(val, 'key_path');
+      assertType(val, 'key_path_query');
       return val ? val.replace(/-/g, '_')
                       .replace(/(^|\/)\*/g, '/*{1}')
                       .replace(/^\//, '')
@@ -83,7 +89,7 @@ const convertIn = exports.convertIn = function convertIn(val, type) {
     case 'key_array':
       return val ? val.map(key => convertIn(key, 'key')) : val;
     case 'row':
-      return Object.assign(val, { key: convertIn(val.key, 'key') });
+      return Object.assign({}, val, { key: convertIn(val.key, 'key') });
     case 'row_array':
       return val.map(row => convertIn(row, 'row'));
     case 'spec':
@@ -97,13 +103,15 @@ const convertOut = exports.convertOut = function convertOut(val, type) {
   assertType(val, type);
   switch (type) {
     case 'key':
-      assertType(val, 'key_ltree');
+      assertType(val, 'key_ltree_query');
       return val ? '/' + val.replace(/_/g, '-')
                             .replace(/\*\{3\}/g, '*.*.*') // XXX
                             .replace(/\*\{2}/g, '*.*') // XXX
                             .replace(/\*\{1}/g, '*') // XXX
                             .replace(/\./g, '/')
                  : val;
+    case 'key_array':
+      return val ? val.map(key => convertOut(key, 'key')) : val;
     case 'row':
       return val && val.key ? Object.assign({}, val, { key: convertOut(val.key, 'key') }) : val;
     case 'row_array':

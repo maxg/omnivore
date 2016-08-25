@@ -55,6 +55,38 @@ describe('Omnivore', function() {
         [ '6.S04/fa15', true ],
         [ '6.s04/fa15', false ],
       ] ],
+      [ 'key_path', [
+        [ '', false ],
+        [ '/', true ],
+        [ '/a', true ],
+        [ '/a/', false ],
+        [ '/a/b', true ],
+        [ '/*/b', false ],
+        [ '/a/*', false ],
+        [ 'a/b', false ],
+      ] ],
+      [ 'key_path_query', [
+        [ '', true ],
+        [ '/', true ],
+        [ '/a', true ],
+        [ '/a/', false ],
+        [ '/a/b', true ],
+        [ '/*/b', true ],
+        [ '/a/*', true ],
+        [ 'a/b', true ],
+        [ '*/b', true ],
+        [ 'a/*', true ],
+      ] ],
+      [ 'key_ltree_query', [
+        [ '', true ],
+        [ '.', false ],
+        [ 'a', true ],
+        [ 'a.', false ],
+        [ 'a.b', true ],
+        [ '*.b', false ],
+        [ '*{1}.b', true ],
+        [ 'b.*{1}', true ],
+      ] ],
     ]).forEach((pairs, type) => {
       describe(type, () => {
         new Map(pairs).forEach((expected, value) => {
