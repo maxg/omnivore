@@ -1,7 +1,3 @@
--- setup.orders
--- in glob
--- order array ??? of relative glob ??? or single key component ???
-
 CREATE DOMAIN wordtext AS TEXT CHECK (VALUE ~ '^[a-z0-9_]+$');
 CREATE DOMAIN identtext AS TEXT CHECK (VALUE ~ '^[a-z0-9_-]+$');
 
@@ -199,9 +195,6 @@ CREATE TABLE IF NOT EXISTS current_data (
     CONSTRAINT current_data_refs_all_data FOREIGN KEY (username, key, ts, value, penalty_applied, agent) REFERENCES all_data (username, key, ts, value, penalty_applied, agent)
 );
 CREATE INDEX current_data_key_gist ON current_data USING gist(key);
-
--- TODO must actual have the same row, not just the same key triple!
--- TODO must be the row with the largest ts?
 
 -- TODO test this trigger!
 CREATE OR REPLACE FUNCTION current_data_replace() RETURNS TRIGGER AS $$
