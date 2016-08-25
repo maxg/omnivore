@@ -166,3 +166,9 @@ exports.common = function(keys) {
   }
   return splits[0].slice(0, ii).join('/');
 };
+
+exports.dateTimeString = function(date) {
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '')
+         + ' '
+         + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(/ (.)M/, (_, p) => p.toLowerCase());
+};

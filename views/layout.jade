@@ -25,10 +25,7 @@ mixin value(value)
 
 mixin ts(ts)
   if ts
-    - var date = new Date(ts);
-    = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '')
-    = ' '
-    = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(/ (.)M/, (_, p) => p.toLowerCase())
+    = types.dateTimeString(new Date(ts))
 
 doctype
 html

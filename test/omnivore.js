@@ -88,6 +88,12 @@ describe('Omnivore', function() {
         omnivore.types.common([ '/a/b/c', '/a/b/d' ]).should.eql('/a/b');
       });
     });
+    
+    describe('#dateTimeString()', () => {
+      it('should format date', () => {
+        omnivore.types.dateTimeString(new Date(2017, 0, 1, 13)).should.eql('Sun Jan 1 1:00p');
+      });
+    });
   });
   
   describe('#parse()', () => {
