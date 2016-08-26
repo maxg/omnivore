@@ -18,7 +18,7 @@ describe('Omnivore', function() {
   let now = new Date();
   
   let ready = new Promise(resolve => omni.once('ready', resolve));
-  before(done => ready.then(done));
+  before(done => { ready.then(done) });
   
   beforeEach(done => {
     omni.pg((client, done) => {

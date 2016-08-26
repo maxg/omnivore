@@ -10,7 +10,7 @@ postgresql_version='9.5'
 apt-get install -y git
 
 # Apt Repositories
-cat > /etc/apt/sources.list.d/nodesource.list <<< 'deb https://deb.nodesource.com/node_5.x trusty main'
+cat > /etc/apt/sources.list.d/nodesource.list <<< 'deb https://deb.nodesource.com/node_6.x trusty main'
 wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
 cat > /etc/apt/sources.list.d/pgdg.list <<< "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $postgresql_version"
 wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
@@ -39,7 +39,7 @@ pgweb_zip=pgweb_linux_amd64.zip
 (
   cd pgweb
   curl -LO "https://github.com/sosedoff/pgweb/releases/download/$pgweb_tag/$pgweb_zip"
-  unzip "$pgweb_zip" && rm "$pgweb_zip"
+  unzip -o "$pgweb_zip" && rm "$pgweb_zip"
 )
 
 # pgBadger
@@ -51,19 +51,11 @@ pgbadger_zip="$pgbadger_tag.zip"
 (
   cd pgbadger
   curl -LO "https://github.com/dalibo/pgbadger/archive/$pgbadger_zip"
-  unzip "$pgbadger_zip" && rm "$pgbadger_zip"
+  unzip -o "$pgbadger_zip" && rm "$pgbadger_zip"
   cd pgbadger-${pgbadger_tag#v}
   perl Makefile.PL
   make
 )
-
-# OpenStack
-if [ $user == vagrant ]
-then
-  apt-get install -y python-dev python-pip
-  pip install python-novaclient python-cinderclient
-  pip install pyopenssl ndg-httpsclient pyasn1
-fi
 
 # SSL
 (

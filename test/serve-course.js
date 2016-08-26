@@ -27,7 +27,7 @@ describe('serve-course', function() {
   let now = new Date();
   
   let ready = new Promise(resolve => omni.once('ready', resolve));
-  before(done => ready.then(done));
+  before(done => { ready.then(done) });
   
   before(done => server.listen(0, 'localhost', done));
   before(() => {

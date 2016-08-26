@@ -6,7 +6,7 @@
 
 set -e
 
-node --harmony src/serve-frontend |
+node src/serve-frontend |
 if [ "$NODE_ENV" == production ]; then
     TODO
 else

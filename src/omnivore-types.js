@@ -5,6 +5,7 @@ const util = require('util');
 
 const pg = require('pg');
 const xtype = require('xtypejs');
+xtype.ext.registerExtension(require('xtypejs-extension-custom-types'));
 
 // PostgreSQL type constants
 exports.pg = {
