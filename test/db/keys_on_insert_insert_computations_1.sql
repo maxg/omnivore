@@ -7,7 +7,6 @@ PERFORM assert(NOT FOUND, result::TEXT);
 
 INSERT INTO keys VALUES ('test.a.in1.a'), ('test.b');
 
--- TODO improve
 SELECT count(*) AS count INTO STRICT result FROM computations;
 PERFORM assert(result.count = 2, result::TEXT);
 

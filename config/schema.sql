@@ -351,6 +351,17 @@ CREATE TRIGGER computation_rules_on_insert_insert_computations AFTER INSERT ON c
 CREATE OR REPLACE RULE computation_rules_on_delete_delete_computations AS ON DELETE TO computation_rules
   DO DELETE FROM computations WHERE output ~ (OLD.base::TEXT || '.' || OLD.output::TEXT)::LQUERY;
 
+CREATE OR REPLACE FUNCTION computations_ignore_duplicate() RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM computations WHERE output::TEXT = NEW.output::TEXT AND inputs::TEXT[] = NEW.inputs::TEXT[] AND compute = NEW.compute) THEN
+        RETURN NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER computations_on_insert_ignore_duplicate BEFORE INSERT ON computations
+    FOR EACH ROW EXECUTE PROCEDURE computations_ignore_duplicate();
+
 CREATE OR REPLACE FUNCTION computations_ensure_key() RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO keys (key) SELECT NEW.output WHERE NOT EXISTS (SELECT 1 FROM keys WHERE key = NEW.output);

@@ -7,7 +7,6 @@ INSERT INTO computation_rules VALUES
     ('test.*', 'out1', '{"in1.*", "in2.*"}', 'unknown'),
     ('test', 'out2', '{"a.in1.*"}', 'unknown');
 
--- TODO improve
 SELECT count(*) AS count INTO STRICT result FROM computations;
 PERFORM assert(result.count = 2, result::TEXT);
 
