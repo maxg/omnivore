@@ -5,6 +5,7 @@ const fs = require('fs');
 const http = require('http');
 
 const async = require('async');
+const csv = require('csv');
 const request = require('request');
 const should = require('should');
 const sinon = require('sinon');
@@ -360,12 +361,47 @@ describe('serve-course', function() {
   
   describe('GET /grades/:keys.csv', () => {
     
-    it('should require staff');
+    let single_url = '/grades/test/class-1/nanoquiz.csv';
+    let multi_url = '/grades/test/class-1/nanoquiz,/test/class-2/nanoquiz.csv';
     
-    it('should render single-grade CSV');
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(single_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
     
-    it('should render multi-grade CSV');
+    it('should render single-key CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(single_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        let date = omnivore.types.dateTimeString(new Date());
+        csv.parse(body, { relax_column_count: true }, (err, sheet) => {
+          sheet.should.read([
+            [ 'username', '/test/class-1/nanoquiz', `exported ${date} by staffer` ],
+            [ 'alice', '10' ],
+            [ 'bob', '9' ],
+          ]);
+          done(err);
+        });
+      }));
+    });
     
+    it('should render multi-key CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(multi_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        let date = omnivore.types.dateTimeString(new Date());
+        csv.parse(body, { relax_column_count: true }, (err, sheet) => {
+          sheet.should.read([
+            [ 'username', '/test/class-1/nanoquiz', '/test/class-2/nanoquiz', `exported ${date} by staffer` ],
+            [ 'alice', '10', '8' ],
+            [ 'bob', '9', '' ],
+          ]);
+          done(err);
+        });
+      }));
+    });    
   });
   
   describe('POST /grades.csv', () => {

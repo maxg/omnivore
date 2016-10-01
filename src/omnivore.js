@@ -13,6 +13,7 @@ const pg = require('pg');
 
 const logger = require('./logger');
 
+const csv = exports.csv = require('./omnivore-csv');
 const types = exports.types = require('./omnivore-types');
 
 const db_schema = fs.readFileSync('./config/schema.sql', { encoding: 'utf-8' });

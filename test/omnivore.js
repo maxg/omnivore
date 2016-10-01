@@ -128,6 +128,27 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('csv', () => {
+    
+    describe('#stringify()', () => {
+      
+      it('should export header row', done => {
+        let sheet = omnivore.csv.stringify([ '/a', '/b' ], [ ], [ 'my comment' ]);
+        sheet.setEncoding('utf-8');
+        sheet.read().should.eql('"username","/a","/b","my comment"\n');
+        done();
+      });
+      it('should export values', done => {
+        let sheet = omnivore.csv.stringify([ '/a', '/b' ], [
+          { username: 'alice', '/a': { value: 5 }, '/b': { value: '\'hello\'\n"there"' } },
+        ]);
+        sheet.setEncoding('utf-8');
+        sheet.read().should.eql('"username","/a","/b"\n"alice",5,"\'hello\'\n""there"""\n');
+        done();
+      });
+    });
+  });
+  
   describe('#parse()', () => {
     
     it('should parse signed JSON', done => {

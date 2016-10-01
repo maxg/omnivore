@@ -8,7 +8,6 @@ const util = require('util');
 const async = require('async');
 const body_parser = require('body-parser');
 const cookie_parser = require('cookie-parser');
-const csv = require('csv');
 const express = require('express');
 const response_time = require('response-time');
 
@@ -218,13 +217,9 @@ exports.createApp = function createApp(omni) {
     omni.multiget(req.params.keys, spec, (err, rows) => {
       if (err) { return next(err); }
       res.attachment(filename);
-      let sheet = csv.stringify({ quotedString: true });
-      sheet.pipe(res);
-      sheet.write([ 'username', ...req.params.keys, `exported ${new Date().toISOString()} by ${res.locals.authuser}` ]);
-      for (let row of rows) {
-        sheet.write([ row.username, ...req.params.keys.map(key => row[key].value) ]);
-      }
-      sheet.end();
+      omnivore.csv.stringify(req.params.keys, rows, [
+        `exported ${omnivore.types.dateTimeString(new Date())} by ${res.locals.authuser}`
+      ]).pipe(res);
     });
   });
   
