@@ -289,10 +289,10 @@ CREATE TRIGGER current_computed_on_insert_replace BEFORE INSERT ON current_compu
 
 CREATE OR REPLACE RULE current_computed_prevent_update AS ON UPDATE TO current_computed DO INSTEAD NOTHING;
 
-CREATE OR REPLACE RULE raw_data_on_insert_delete_stale_computed AS ON INSERT TO raw_data
+CREATE OR REPLACE RULE raw_data_on_insert_delete_overridden_computed AS ON INSERT TO raw_data
     DO DELETE FROM current_computed WHERE key = NEW.key AND username = NEW.username;
 
-CREATE OR REPLACE RULE raw_data_on_delete_delete_stale_computed AS ON DELETE TO raw_data
+CREATE OR REPLACE RULE raw_data_on_delete_delete_overridden_computed AS ON DELETE TO raw_data
     DO DELETE FROM current_computed WHERE key = OLD.key AND username = OLD.username;
 
 CREATE TABLE IF NOT EXISTS computation_rules (
