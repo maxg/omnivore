@@ -568,8 +568,8 @@ Omnivore.prototype._prepare = function _prepare(fn) {
 };
 
 Omnivore.prototype.allStaff = client(
-                           types.check([ pg.Client ], [ Set ],
-                           function _staff(client, done) {
+                              types.check([ pg.Client ], [ Set ],
+                              function _staff(client, done) {
   client.logQuery({
     name: 'allStaff-select-staff',
     text: 'SELECT username FROM staff',
@@ -580,8 +580,8 @@ Omnivore.prototype.allStaff = client(
 }));
 
 Omnivore.prototype.allUsers = client(
-                           types.check([ pg.Client ], [ 'array' ],
-                           function _users(client, done) {
+                              types.check([ pg.Client ], [ 'array' ],
+                              function _users(client, done) {
   async.waterfall([
     cb => client.logQuery({
       name: 'allUsers-select-users',
