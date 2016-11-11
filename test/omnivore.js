@@ -147,6 +147,57 @@ describe('Omnivore', function() {
         done();
       });
     });
+    
+    describe('#parse()', () => {
+      
+      it('should parse values', done => {
+        let sheet = omnivore.csv.parse(`username,/a,/b,/c,/d
+                                        alice,5,"'hello'\n""there""",,true`);
+        sheet.once('parsed', (keys, rows) => {
+          keys.should.eql([ '/a', '/b', '/c', '/d' ]);
+          rows.should.read([ {
+            username: 'alice',
+            valid: true,
+            values: [ 5, '\'hello\'\n"there"', null, true ],
+          } ]);
+          done();
+        });
+      });
+      
+      it('should ignore past invalid key', done => {
+        let sheet = omnivore.csv.parse(`username,/a,/b-c,/d/e/f,x,/g,/h
+                                        alice,1,2,3,4,5,6`);
+        sheet.once('parsed', (keys, rows) => {
+          keys.should.eql([ '/a', '/b-c', '/d/e/f' ]);
+          rows.should.read([ { username: 'alice', values: [ 1, 2, 3 ] } ]);
+          done();
+        });
+      });
+      
+      it('should ignore extra values', done => {
+        let sheet = omnivore.csv.parse(`username,/a,/b
+                                        alice,1.1,2.2,3.3`);
+        sheet.once('parsed', (keys, rows) => {
+          keys.should.eql([ '/a', '/b' ]);
+          rows.should.read([ { username: 'alice', values: [ 1.1, 2.2 ] } ]);
+          done();
+        });
+      });
+      
+      it('should include invalid users', done => {
+        let sheet = omnivore.csv.parse(`username,/a
+                                        alice@mit,1
+                                        bob,2`);
+        sheet.once('parsed', (keys, rows) => {
+          keys.should.eql([ '/a' ]);
+          rows.should.read([
+            { username: 'alice@mit', valid: false, values: [ 1 ] },
+            { username: 'bob', valid: true, values: [ 2 ] },
+          ]);
+          done();
+        });
+      });
+    });
   });
   
   describe('#parse()', () => {
