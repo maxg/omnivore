@@ -585,7 +585,11 @@ Omnivore.prototype.allUsers = client(
   async.waterfall([
     cb => client.logQuery({
       name: 'allUsers-select-users',
-      text: 'SELECT * FROM users ORDER BY on_roster, username',
+      text: `SELECT *, COALESCE(on_staff, FALSE) AS on_staff FROM
+             users
+             NATURAL LEFT JOIN
+             (SELECT *, TRUE AS on_staff FROM staff) staff
+             ORDER BY on_roster DESC, username`,
     }, cb),
     (result, cb) => cb(null, result.rows),
   ], done);

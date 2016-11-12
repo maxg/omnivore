@@ -9,5 +9,6 @@ append content
     tbody
       each row in users
         tr
-          td.user: a(href='/#{course}/u/#{row.username}/')= row.username
           td.roster(data-on=row.on_roster)
+          td.user: a(href='/#{course}/u/#{row.username}/')= row.username
+          td.staffer(data-on=row.on_staff)

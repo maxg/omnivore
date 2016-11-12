@@ -830,8 +830,8 @@ describe('Omnivore', function() {
     it('should return users', done => {
       omni.allUsers(bail(done, result => {
         result.should.read([
-          { username: 'alice' },
-          { username: 'bob' },
+          { username: 'alice', on_roster: false, on_staff: false },
+          { username: 'bob', on_roster: false, on_staff: false },
         ]);
         done();
       }));
