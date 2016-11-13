@@ -7,12 +7,12 @@ append content
   
   p.key
     +keynav(key)
-    a.csv(href='/#{course}/grades#{key}.csv')
+    a.csv(href=`/${course}/grades${key}.csv`)
   
   table
     tbody
       each row in grades
         tr
-          td.user: a(href='/#{course}/u/#{row.username}#{key}')= row.username
+          td.user: a(href=`/${course}/u/${row.username}${key}`)= row.username
           td.value: +value(row.value)
           td.ts: +ts(row.ts)

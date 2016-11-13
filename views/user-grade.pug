@@ -31,7 +31,7 @@ append content
         td.late(data-on=grade.penalty_applied)= grade.penalty_applied
         td.override(data-on=grade.ts && grade.compute && ! grade.computed)
         if ! history
-          td: a.history(href='/#{course}/u/#{username}#{key}.history')
+          td: a.history(href=`/${course}/u/${username}${key}.history`)
   
   if history && history.length
     p Historical
@@ -51,7 +51,7 @@ append content
         each row in inputs
           tr
             td.bullet(data-computed=row.computed)
-            td.key: a(href='/#{course}/u/#{username}#{row.key}'): +key(path.relative(path.dirname(key), row.key))
+            td.key: a(href=`/${course}/u/${username}${row.key}`): +key(path.relative(path.dirname(key), row.key))
             td.value: +value(row.value)
             td.ts: +ts(row.ts)
             td.due.ts(data-value=row.deadline): +ts(row.deadline)
@@ -69,7 +69,7 @@ append content
         each row in outputs
           tr
             td.bullet(data-computed=row.computed)
-            td.key: a(href='/#{course}/u/#{username}#{row.key}'): +key(path.relative(path.dirname(key), row.key))
+            td.key: a(href=`/${course}/u/${username}${row.key}`): +key(path.relative(path.dirname(key), row.key))
             td.value: +value(row.value)
             td.ts: +ts(row.ts)
             td.due.ts(data-value=row.deadline): +ts(row.deadline)

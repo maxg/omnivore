@@ -13,7 +13,7 @@ append content
         each row in dirs
           tr
             td.bullet
-            td.key: a(href='/#{course}/grades#{row.key}'): +key(path.relative(key, row.key))
+            td.key: a(href=`/${course}/grades${row.key}`): +key(path.relative(key, row.key))
   
   if children.length
     table
@@ -21,7 +21,7 @@ append content
         each row in children
           tr
             td.bullet(data-computed=row.computed)
-            td.key: a(href='/#{course}/grades#{row.key}'): +key(path.relative(key, row.key))
+            td.key: a(href=`/${course}/grades${row.key}`): +key(path.relative(key, row.key))
             td.due.ts(data-value=row.deadline): +ts(row.deadline)
             td.visible(data-on=row.visible)
             td.active(data-on=row.active)

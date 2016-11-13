@@ -27,7 +27,7 @@ append content
       th
       th
       each key in upload.keys
-        th.key: a(href='/#{course}/grades#{key.key}')
+        th.key: a(href=`/${course}/grades${key.key}`)
           +arrow(key.inputs.length)
           | #{key.key}
           +arrow(key.outputs.length)
@@ -35,7 +35,7 @@ append content
       each row in upload.rows
         tr(data-invalid=!row.valid)
           td.roster(data-on=row.on_roster, data-type=row.exists ? '' : 'none')
-          td.user.staffer(data-on=row.on_staff): a(href='/#{course}/u/#{row.username}')= row.username
+          td.user.staffer(data-on=row.on_staff): a(href=`/${course}/u/${row.username}`)= row.username
           each value in row.values
             td.value(data-type=types.which(value, types.value_types)): +value(value)
 

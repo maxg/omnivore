@@ -30,7 +30,7 @@ exports.createApp = function createApp(omni) {
   
   app.set('strict routing', true);
   app.set('trust proxy', 'loopback');
-  app.set('view engine', 'jade');
+  app.set('view engine', 'pug');
   app.set('x-powered-by', false);
   
   app.locals.path = path;

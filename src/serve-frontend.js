@@ -22,7 +22,7 @@ const proxy = http_proxy.createProxyServer();
 
 const app = express();
 
-app.set('view engine', 'jade');
+app.set('view engine', 'pug');
 app.set('x-powered-by', false);
 
 app.use(favicon('web/favicon.ico'));
