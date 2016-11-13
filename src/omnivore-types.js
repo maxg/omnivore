@@ -11,6 +11,7 @@ xtype.ext.registerExtension(require('xtypejs-extension-custom-types'));
 exports.pg = {
   BOOL: 16,
   TEXT: 25,
+  TEXTarray: 1009,
   LTREE: 16386, // XXX stable?
   LTREEarray: 16389, // XXX stable?
   LQUERY: 16440, // XXX stable?
@@ -62,6 +63,10 @@ xtype.ext.registerType({
   row:       { definition: { validator: val => xtype.isObject(val) } },
   row_array: { definition: { validator: val => xtype.isArray(val) && xtype.all.isRow(val) } },
 });
+
+const whichType = exports.which = function which(val, types) {
+  return xtype.which(val, types);
+};
 
 const isType = exports.is = function is(val, type) {
   return xtype.is(val, type);

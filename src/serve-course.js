@@ -9,13 +9,17 @@ const async = require('async');
 const body_parser = require('body-parser');
 const cookie_parser = require('cookie-parser');
 const express = require('express');
+const multer = require('multer');
 const response_time = require('response-time');
+const uuid = require('node-uuid');
 
 const logger = require('./logger');
 const omnivore = require('./omnivore');
 
 const x_auth_user = exports.x_auth_user = 'X-Authenticated-User';
 const x_omni_sign = exports.x_omni_sign = 'X-Omnivore-Signed';
+
+const upload_id_regex = /\w{8}(-\w{4}){3}-\w{12}/;
 
 // create a web frontend for an Omnivore backend
 exports.createApp = function createApp(omni) {
@@ -53,6 +57,11 @@ exports.createApp = function createApp(omni) {
     keys = ('/' + keys).split(',');
     if ( ! keys.every(key => omnivore.types.is(key, 'key_path'))) { return next('route'); }
     req.params.keys = keys;
+    next();
+  });
+  
+  app.param('upload_id', (req, res, next, keys) => {
+    if( ! upload_id_regex.test(req.params.upload_id)) { return next('route'); }
     next();
   });
   
@@ -220,6 +229,65 @@ exports.createApp = function createApp(omni) {
       omnivore.csv.stringify(req.params.keys, rows, [
         `exported ${omnivore.types.dateTimeString(new Date())} by ${res.locals.authuser}`
       ]).pipe(res);
+    });
+  });
+  
+  const pending_uploads = new Map();
+  
+  app.post('/grades.csv', staffonly, multer().single('csv'), (req, res, next) => {
+    let upload_id = uuid.v4();
+    let timeout = 1000 * 60 * 60 * 24; // 1 day
+    omnivore.csv.parse(req.file.buffer).once('parsed', (keys, rows) => {
+      pending_uploads.set(upload_id, {
+        username: res.locals.authuser,
+        created: new Date(),
+        timeout: new Date(Date.now() + timeout),
+        keys,
+        rows,
+      });
+      setTimeout(() => pending_uploads.delete(upload_id), timeout);
+      res.redirect(303, `/${omni.course}/grades.csv/${upload_id}`);
+    });
+  });
+  
+  app.get('/grades.csv/:upload_id', staffonly, (req, res, next) => {
+    let upload = pending_uploads.get(req.params.upload_id);
+    if ( ! upload) { return res.status(404).render('404'); }
+    
+    async.auto({
+      keys: cb => omni.keys(upload.keys, cb),
+      users: cb => omni.users(upload.rows.map(row => row.username), cb),
+    }, (err, results) => {
+      if (err) { return next(err); }
+      res.locals.fullpage = true;
+      res.render('upload-preview', {
+        upload: Object.assign({}, upload, {
+          keys: results.keys,
+          rows: upload.rows.map(row => Object.assign({}, row, results.users.shift())),
+        }),
+      });
+    });
+  });
+  
+  app.post('/grades.csv/:upload_id', staffonly, (req, res, next) => {
+    let upload = pending_uploads.get(req.params.upload_id);
+    if ( ! upload) { return res.status(404).render('404'); }
+    
+    let valid = upload.rows.filter(row => row.valid);
+    let invalid = upload.rows.filter(row => ! row.valid);
+    let rows = valid.map(row => upload.keys.map((key, idx) => ({
+      username: row.username,
+      key,
+      ts: upload.created,
+      value: row.values[idx],
+    }))).reduce((a, b) => a.concat(b), []);
+    omni.multiadd(res.locals.authuser, rows, err => {
+      if (err) { return next(err); }
+      res.render('upload-saved', {
+        upload,
+        valid,
+        invalid,
+      });
     });
   });
   

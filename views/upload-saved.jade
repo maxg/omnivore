@@ -1,0 +1,38 @@
+extends layout
+
+append head
+  title Saved Grades - #{course} - Omnivore
+
+append content
+  
+  .staff
+    p Saved #[+plural(upload.keys.length, 'key')] &times; #[+plural(valid.length, 'user')]
+      |  = #[+plural(upload.keys.length * valid.length, 'grade')]
+      if invalid.length
+        | #[br] (skipped #[+plural(invalid.length, 'invalid user')])
+      | #[br] dated #{upload.created} #[br] by #{authuser}
+  
+  p Keys
+  table
+    tbody
+      each key in upload.keys
+        tr
+          td.bullet
+          td.key: a(href='/#{course}/grades#{key}'): +key(key)
+  
+  p Users
+  table
+    tbody
+      each row in valid
+        tr
+          td
+          td.user: a(href='/#{course}/u/#{row.username}/')= row.username
+  
+  if invalid.length
+    p Skipped
+    table
+      tbody
+        each row in invalid
+          tr
+            td
+            td.user= row.username

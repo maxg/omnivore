@@ -406,14 +406,140 @@ describe('serve-course', function() {
   
   describe('POST /grades.csv', () => {
     
-    it('should require staff');
+    let url = '/grades.csv';
+    let formData = { csv: { value: 'username\n', options: { filename: 'upload.csv' } } };
     
-    it('should add data');
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).post(url, { formData }, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
     
-    it('should ignore missing data');
+    it('should redirect to preview', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).post(url, { formData }, bail(done, res => {
+        res.statusCode.should.eql(303);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.startWith(`/${course}${url}/`);
+        done();
+      }));
+    });
+  });
+  
+  describe('GET /grades.csv/:upload_id', () => {
     
-    it('should render data');
+    let upload_url = '/grades.csv';
+    let formData = { csv: { value: 'username,/foo\nalice,12.3\n', options: { filename: 'upload.csv' } } };
+    let save_url;
     
+    before(done => {
+      req.headers({ [x_auth_user]: 'staffer' }).post(upload_url, { formData }, (err, res) => {
+        save_url = res.headers.location.replace(`/${course}`, '');
+        done(err);
+      });
+    });
+    
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(save_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
+    
+    it('should render data', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(save_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'upload-preview' ]);
+        body.should.match(/created.*by staffer.*expires/);
+        body.should.match(/\/foo/);
+        body.should.match(/alice.*12\.3/);
+        done();
+      }));
+    });
+    
+    it('should fail with missing upload', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(save_url.replace(/.{8}$/, '00000000'), bail(done, res => {
+        res.statusCode.should.eql(404);
+        app.render.templates().should.eql([ '404' ]);
+        done();
+      }));
+    });
+  });
+  
+  describe('POST /grades.csv/:upload_id', () => {
+    
+    let upload_url = '/grades.csv';
+    let formData = { csv: {
+      value: 'username,/test/class-2/nanoquiz,/test/class-3/nanoquiz\nalice,7,0\nbob,6,5',
+      options: { filename: 'upload.csv' },
+    } };
+    let save_url;
+    
+    before(done => {
+      req.headers({ [x_auth_user]: 'staffer' }).post(upload_url, { formData }, (err, res) => {
+        save_url = res.headers.location.replace(`/${course}`, '');
+        done(err);
+      });
+    });
+    
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).post(save_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
+    
+    it('should require agent', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).post(save_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(500);
+        app.render.templates().should.eql([ '500' ]);
+        omni.multiget([ '/test/class-2/nanoquiz', '/test/class-3/nanoquiz' ], { hidden: true }, bail(done, rows => {
+          rows.should.read([
+            { username: 'alice', '/test/class-2/nanoquiz': { value: 8 }, '/test/class-3/nanoquiz': undefined },
+            { username: 'bob', '/test/class-2/nanoquiz': { value: null }, '/test/class-3/nanoquiz': undefined },
+          ]);
+          done();
+        }));
+      }));
+    });
+    
+    it('should render summary', done => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).post(save_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'upload-saved' ]);
+        body.should.match(/Saved 2 keys.*2 users.*4 grades/);
+        body.should.match(/dated.*by nanoquizzer/);
+        body.should.match(/\/test\/class-2\/nanoquiz/);
+        body.should.match(/\/test\/class-3\/nanoquiz/);
+        done();
+      }));
+    });
+    
+    it('should save data', done => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).post(save_url, bail(done, (res, body) => {
+        omni.multiget([ '/test/class-2/nanoquiz', '/test/class-3/nanoquiz' ], { hidden: true }, bail(done, rows => {
+          rows.should.read([
+            { username: 'alice', '/test/class-2/nanoquiz': { value: 7 }, '/test/class-3/nanoquiz': { value: 0 } },
+            { username: 'bob', '/test/class-2/nanoquiz': { value: 6 }, '/test/class-3/nanoquiz': { value: 5 } },
+          ]);
+          done();
+        }));
+      }));
+    });
+    
+    it('should fail with missing upload', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).post(save_url.replace(/.{8}$/, '00000000'), bail(done, res => {
+        res.statusCode.should.eql(404);
+        app.render.templates().should.eql([ '404' ]);
+        done();
+      }));
+    });
   });
   
   describe('GET /users/', () => {

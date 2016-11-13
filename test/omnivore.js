@@ -91,6 +91,7 @@ describe('Omnivore', function() {
       describe(type, () => {
         new Map(pairs).forEach((expected, value) => {
           it(`${util.inspect(value)} ${expected ? 'is' : 'is not'} ${type}`, () => {
+            omnivore.types.which(value, [ type ]).should.equal(expected ? type : 'none');
             omnivore.types.is(value, type).should.equal(expected);
             if (expected) {
               omnivore.types.assert(value, type).should.eql(value);
@@ -832,6 +833,83 @@ describe('Omnivore', function() {
         result.should.read([
           { username: 'alice', on_roster: false, on_staff: false },
           { username: 'bob', on_roster: false, on_staff: false },
+        ]);
+        done();
+      }));
+    });
+  });
+  
+  describe('#users()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 10, cb),
+        cb => omni.add('tester', 'bob', '/test/beta', now, 20, cb),
+      ], done);
+    });
+    
+    it('should return users in order', done => {
+      omni.users([ 'bob', 'alice' ], bail(done, result => {
+        result.should.read([
+          { username: 'bob', exists: true, on_roster: false, on_staff: false },
+          { username: 'alice', exists: true, on_roster: false, on_staff: false },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should include nonexistent users', done => {
+      omni.users([ 'zach', 'bob', 'staffer' ], bail(done, result => {
+        result.should.read([
+          { username: 'zach', exists: false, on_roster: false, on_staff: false },
+          { username: 'bob', exists: true, on_roster: false, on_staff: false },
+          { username: 'staffer', exists: false, on_roster: false, on_staff: true },
+        ]);
+        done();
+      }));
+    });
+  });
+  
+  describe('#keys()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 100, cb),
+        cb => omni.add('tester', 'alice', '/test/gamma', t_plus(now, 1), 50, cb),
+        cb => omni.compute('/test', 'beta', [ 'alpha' ], alpha => alpha / 2, cb),
+        cb => omni.compute('/test', 'delta', [ 'alpha', 'gamma' ], (alpha, gamma) => alpha + gamma, cb),
+        cb => omni.active('/test/alpha', now, cb),
+        cb => omni.visible('/test/beta', now, cb),
+      ], done);
+    });
+    
+    it('should return keys in order', done => {
+      omni.keys([ '/test/alpha', '/test/beta', '/test/delta' ], bail(done, result => {
+        result.should.read([
+          { key: '/test/alpha', active: true, visible: false },
+          { key: '/test/beta', active: false, visible: true },
+          { key: '/test/delta', active: false, visible: false },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should return inputs and outputs', done => {
+      omni.keys([ '/test/alpha', '/test/delta' ], bail(done, result => {
+        result.should.read([
+          { key: '/test/alpha', inputs: [], outputs: [ '/test/beta', '/test/delta' ] },
+          { key: '/test/delta', inputs: [ '/test/alpha', '/test/gamma' ], outputs: [] },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should include nonexistent keys', done => {
+      omni.keys([ '/test/epsilon', '/test/gamma', '/test/omega' ], bail(done, result => {
+        result.should.read([
+          { key: '/test/epsilon', exists: false },
+          { key: '/test/gamma', exists: true },
+          { key: '/test/omega', exists: false },
         ]);
         done();
       }));
