@@ -151,16 +151,38 @@ describe('Omnivore', function() {
     
     describe('#parse()', () => {
       
-      it('should parse values', done => {
-        let sheet = omnivore.csv.parse(`username,/a,/b,/c,/d
-                                        alice,5,"'hello'\n""there""",,true`);
+      new Map([
+        [ 'boolean',
+          [ [ `true`, true ], [ `"true"`, true ] ] ],
+        [ 'number',
+          [ [ `5`, 5 ], [ `"5"`, 5 ], [ `-5.1`, -5.1 ] ] ],
+        [ 'string',
+          [ [ `a`, 'a' ], [ `"'hello'\n""there"""`, `'hello'\n"there"` ], [ `" "`, ' ' ],
+            [ `null`, 'null' ], [ `undefined`, 'undefined' ] ] ],
+        [ 'undefined',
+          [ [ ``, undefined ], [ `""`, undefined ], [ `   `, undefined ] ] ],
+      ]).forEach((pairs, type) => {
+        describe(type, () => {
+          new Map(pairs).forEach((expected, value) => {
+            it(`should parse value ${util.inspect(value)}`, done => {
+              let sheet = omnivore.csv.parse(`username,/middle,/end
+                                              alice,${value},${value}`);
+              sheet.once('parsed', (keys, rows) => {
+                rows.should.read([ { values: [ expected, expected ] } ]);
+                done();
+              });
+            });
+          });
+        });
+      });
+      
+      it('should parse users and keys', done => {
+        let sheet = omnivore.csv.parse(`username,/a,/b
+                                        alice
+                                        bob,1,2`);
         sheet.once('parsed', (keys, rows) => {
-          keys.should.eql([ '/a', '/b', '/c', '/d' ]);
-          rows.should.read([ {
-            username: 'alice',
-            valid: true,
-            values: [ 5, '\'hello\'\n"there"', null, true ],
-          } ]);
+          keys.should.eql([ '/a', '/b' ]);
+          rows.should.read([ { username: 'alice' }, { username: 'bob' } ]);
           done();
         });
       });
@@ -181,6 +203,16 @@ describe('Omnivore', function() {
         sheet.once('parsed', (keys, rows) => {
           keys.should.eql([ '/a', '/b' ]);
           rows.should.read([ { username: 'alice', values: [ 1.1, 2.2 ] } ]);
+          done();
+        });
+      });
+      
+      it('should fill in missing values', done => {
+        let sheet = omnivore.csv.parse(`username,/a,/b
+                                        alice,apple`);
+        sheet.once('parsed', (keys, rows) => {
+          keys.should.eql([ '/a', '/b' ]);
+          rows.should.read([ { username: 'alice', values: [ 'apple', undefined ] } ]);
           done();
         });
       });

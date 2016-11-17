@@ -274,19 +274,18 @@ exports.createApp = function createApp(omni) {
     if ( ! upload) { return res.status(404).render('404'); }
     
     let valid = upload.rows.filter(row => row.valid);
-    let invalid = upload.rows.filter(row => ! row.valid);
-    let rows = valid.map(row => upload.keys.map((key, idx) => ({
+    let rows = Array.prototype.concat.call(...valid.map(row => upload.keys.map((key, idx) => ({
       username: row.username,
       key,
       ts: upload.created,
       value: row.values[idx],
-    }))).reduce((a, b) => a.concat(b), []);
+    })))).filter(row => omnivore.types.is(row.value, 'value'));
     omni.multiadd(res.locals.authuser, rows, err => {
       if (err) { return next(err); }
       res.render('upload-saved', {
         upload,
-        valid,
-        invalid,
+        valid: rows.length,
+        invalid: upload.keys.length * upload.rows.length - rows.length,
       });
     });
   });

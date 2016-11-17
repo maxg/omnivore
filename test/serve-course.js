@@ -474,7 +474,7 @@ describe('serve-course', function() {
     
     let upload_url = '/grades.csv';
     let formData = { csv: {
-      value: 'username,/test/class-2/nanoquiz,/test/class-3/nanoquiz\nalice,7,0\nbob,6,5',
+      value: 'username,/test/class-2/nanoquiz,/test/class-3/nanoquiz\nalice,7,0\nbob,6',
       options: { filename: 'upload.csv' },
     } };
     let save_url;
@@ -513,7 +513,8 @@ describe('serve-course', function() {
       req.headers({ [x_auth_user]: 'nanoquizzer' }).post(save_url, bail(done, (res, body) => {
         res.statusCode.should.eql(200);
         app.render.templates().should.eql([ 'upload-saved' ]);
-        body.should.match(/Saved 2 keys.*2 users.*4 grades/);
+        body.should.match(/Saved 3 grades/);
+        body.should.match(/skipped 1 invalid/);
         body.should.match(/dated.*by nanoquizzer/);
         body.should.match(/\/test\/class-2\/nanoquiz/);
         body.should.match(/\/test\/class-3\/nanoquiz/);
@@ -526,7 +527,7 @@ describe('serve-course', function() {
         omni.multiget([ '/test/class-2/nanoquiz', '/test/class-3/nanoquiz' ], { hidden: true }, bail(done, rows => {
           rows.should.read([
             { username: 'alice', '/test/class-2/nanoquiz': { value: 7 }, '/test/class-3/nanoquiz': { value: 0 } },
-            { username: 'bob', '/test/class-2/nanoquiz': { value: 6 }, '/test/class-3/nanoquiz': { value: 5 } },
+            { username: 'bob', '/test/class-2/nanoquiz': { value: 6 }, '/test/class-3/nanoquiz': { value: null } },
           ]);
           done();
         }));

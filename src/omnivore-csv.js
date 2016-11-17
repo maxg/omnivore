@@ -40,11 +40,14 @@ exports.parse = function parse(input) {
   });
   sheet.once('data', () => sheet.on('data', ([ username, ...datarow ]) => {
     let values = datarow.slice(0, keys.length).map(val => {
-      if (val === '') { return null; }
+      if (val === '') { return undefined; }
       if (val === 'true') { return true; }
       if (val === 'false') { return false; }
       return val;
     });
+    while (values.length < keys.length) {
+      values.push(undefined);
+    }
     rows.push({
       username,
       valid: types.is(username, 'username'),
