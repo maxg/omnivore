@@ -234,7 +234,7 @@ exports.createApp = function createApp(omni) {
   
   const pending_uploads = new Map();
   
-  app.post('/grades.csv', staffonly, multer().single('csv'), (req, res, next) => {
+  app.post('/upload.csv', staffonly, multer().single('csv'), (req, res, next) => {
     let upload_id = uuid.v4();
     let timeout = 1000 * 60 * 60 * 24; // 1 day
     omnivore.csv.parse(req.file.buffer).once('parsed', (keys, rows) => {
@@ -246,11 +246,11 @@ exports.createApp = function createApp(omni) {
         rows,
       });
       setTimeout(() => pending_uploads.delete(upload_id), timeout);
-      res.redirect(303, `/${omni.course}/grades.csv/${upload_id}`);
+      res.redirect(303, `/${omni.course}/upload/${upload_id}`);
     });
   });
   
-  app.get('/grades.csv/:upload_id', staffonly, (req, res, next) => {
+  app.get('/upload/:upload_id', staffonly, (req, res, next) => {
     let upload = pending_uploads.get(req.params.upload_id);
     if ( ! upload) { return res.status(404).render('404'); }
     
@@ -269,7 +269,7 @@ exports.createApp = function createApp(omni) {
     });
   });
   
-  app.post('/grades.csv/:upload_id', staffonly, (req, res, next) => {
+  app.post('/upload/:upload_id', staffonly, (req, res, next) => {
     let upload = pending_uploads.get(req.params.upload_id);
     if ( ! upload) { return res.status(404).render('404'); }
     

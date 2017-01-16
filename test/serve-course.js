@@ -404,9 +404,9 @@ describe('serve-course', function() {
     });    
   });
   
-  describe('POST /grades.csv', () => {
+  describe('POST /upload.csv', () => {
     
-    let url = '/grades.csv';
+    let url = '/upload.csv';
     let formData = { csv: { value: 'username\n', options: { filename: 'upload.csv' } } };
     
     it('should require staff', done => {
@@ -422,21 +422,22 @@ describe('serve-course', function() {
       req.headers({ [x_auth_user]: 'staffer' }).post(url, { formData }, bail(done, res => {
         res.statusCode.should.eql(303);
         app.render.templates().should.eql([]);
-        res.headers.location.should.startWith(`/${course}${url}/`);
+        res.headers.location.should.startWith(`/${course}/upload/`);
         done();
       }));
     });
   });
   
-  describe('GET /grades.csv/:upload_id', () => {
+  describe('GET /upload/:upload_id', () => {
     
-    let upload_url = '/grades.csv';
+    let upload_url = '/upload.csv';
     let formData = { csv: { value: 'username,/foo\nalice,12.3\n', options: { filename: 'upload.csv' } } };
     let save_url;
     
     before(done => {
       req.headers({ [x_auth_user]: 'staffer' }).post(upload_url, { formData }, (err, res) => {
         save_url = res.headers.location.replace(`/${course}`, '');
+        save_url.should.startWith('/upload/');
         done(err);
       });
     });
@@ -470,9 +471,9 @@ describe('serve-course', function() {
     });
   });
   
-  describe('POST /grades.csv/:upload_id', () => {
+  describe('POST /upload/:upload_id', () => {
     
-    let upload_url = '/grades.csv';
+    let upload_url = '/upload.csv';
     let formData = { csv: {
       value: 'username,/test/class-2/nanoquiz,/test/class-3/nanoquiz\nalice,7,0\nbob,6',
       options: { filename: 'upload.csv' },
@@ -482,6 +483,7 @@ describe('serve-course', function() {
     before(done => {
       req.headers({ [x_auth_user]: 'staffer' }).post(upload_url, { formData }, (err, res) => {
         save_url = res.headers.location.replace(`/${course}`, '');
+        save_url.should.startWith('/upload/');
         done(err);
       });
     });
