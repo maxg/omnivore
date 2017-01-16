@@ -234,18 +234,23 @@ exports.createApp = function createApp(omni) {
   
   const pending_uploads = new Map();
   
-  app.post('/upload.csv', staffonly, multer().single('csv'), (req, res, next) => {
+  function create_upload(username, keys, rows) {
     let upload_id = uuid.v4();
     let timeout = 1000 * 60 * 60 * 24; // 1 day
+    pending_uploads.set(upload_id, {
+      username,
+      created: new Date(),
+      timeout: new Date(Date.now() + timeout),
+      keys,
+      rows,
+    });
+    setTimeout(() => pending_uploads.delete(upload_id), timeout);
+    return upload_id;
+  }
+  
+  app.post('/upload.csv', staffonly, multer().single('csv'), (req, res, next) => {
     omnivore.csv.parse(req.file.buffer).once('parsed', (keys, rows) => {
-      pending_uploads.set(upload_id, {
-        username: res.locals.authuser,
-        created: new Date(),
-        timeout: new Date(Date.now() + timeout),
-        keys,
-        rows,
-      });
-      setTimeout(() => pending_uploads.delete(upload_id), timeout);
+      let upload_id = create_upload(res.locals.authuser, keys, rows);
       res.redirect(303, `/${omni.course}/upload/${upload_id}`);
     });
   });
@@ -273,7 +278,7 @@ exports.createApp = function createApp(omni) {
     let upload = pending_uploads.get(req.params.upload_id);
     if ( ! upload) { return res.status(404).render('404'); }
     
-    let valid = upload.rows.filter(row => row.valid);
+    let valid = upload.rows.filter(row => omnivore.types.is(row.username, 'username'));
     let rows = Array.prototype.concat.call(...valid.map(row => upload.keys.map((key, idx) => ({
       username: row.username,
       key,

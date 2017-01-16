@@ -33,7 +33,7 @@ append content
           +arrow(key.outputs.length)
     tbody
       each row in upload.rows
-        tr(data-invalid=!row.valid)
+        tr(data-invalid=!types.is(row.username, 'username'))
           td.roster(data-on=row.on_roster, data-type=row.exists ? '' : 'none')
           td.user.staffer(data-on=row.on_staff): a(href=`/${course}/u/${row.username}`)= row.username
           each value in row.values

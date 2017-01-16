@@ -25,7 +25,6 @@ exports.parse = function parse(input) {
     relax_column_count: true,
     skip_empty_lines: true,
     trim: true,
-    auto_parse: true,
   });
   let keys = [];
   let rows = [];
@@ -39,22 +38,24 @@ exports.parse = function parse(input) {
     }
   });
   sheet.once('data', () => sheet.on('data', ([ username, ...datarow ]) => {
-    let values = datarow.slice(0, keys.length).map(val => {
-      if (val === '') { return undefined; }
-      if (val === 'true') { return true; }
-      if (val === 'false') { return false; }
-      return val;
-    });
+    let values = datarow.slice(0, keys.length).map(convert);
     while (values.length < keys.length) {
       values.push(undefined);
     }
-    rows.push({
-      username,
-      valid: types.is(username, 'username'),
-      values,
-    });
+    rows.push({ username, values });
   }));
   sheet.once('finish', () => sheet.emit('parsed', keys, rows));
   process.nextTick(() => sheet.end(input));
   return sheet;
 };
+
+const convert = exports.convert = function convert(val) {
+  if (convert.is_int(val)) { return parseInt(val); }
+  if (convert.is_float(val)) { return parseFloat(val); }
+  if (val === '') { return undefined; }
+  if (val === 'true') { return true; }
+  if (val === 'false') { return false; }
+  return val;
+};
+convert.is_int = RegExp.prototype.test.bind(csv.parse().is_int);
+convert.is_float = csv.parse().is_float;

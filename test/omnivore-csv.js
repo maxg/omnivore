@@ -105,8 +105,8 @@ describe('Omnivore', function() {
         sheet.once('parsed', (keys, rows) => {
           keys.should.eql([ '/a' ]);
           rows.should.read([
-            { username: 'alice@mit', valid: false, values: [ 1 ] },
-            { username: 'bob', valid: true, values: [ 2 ] },
+            { username: 'alice@mit', values: [ 1 ] },
+            { username: 'bob', values: [ 2 ] },
           ]);
           done();
         });
