@@ -76,3 +76,13 @@ append content
             td.late(data-on=row.penalty_applied)
             td.visible(data-on=row.visible)
             td.active(data-on=row.active)
+  
+  if authstaff && history
+    p=grade.computed ? 'Override computed value' : 'Update with new value'
+    form(method='post')
+      table
+        tbody
+          tr
+            td.bullet
+            td.value: +editvalue(grade)
+            td: button.btn.btn-default Update

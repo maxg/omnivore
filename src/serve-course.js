@@ -248,6 +248,14 @@ exports.createApp = function createApp(omni) {
     return upload_id;
   }
   
+  app.post('/u/:username/:key(*).history', staffonly, body_parser.urlencoded({ extended: false }), (req, res, next) => {
+    let upload_id = create_upload(res.locals.authuser, [ req.params.key ], [ {
+      username: req.params.username,
+      values: [ omnivore.csv.convert(req.body[req.params.key]) ],
+    } ]);
+    res.redirect(303, `/${omni.course}/upload/${upload_id}`);
+  });
+  
   app.post('/upload.csv', staffonly, multer().single('csv'), (req, res, next) => {
     omnivore.csv.parse(req.file.buffer).once('parsed', (keys, rows) => {
       let upload_id = create_upload(res.locals.authuser, keys, rows);

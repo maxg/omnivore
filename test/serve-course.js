@@ -404,6 +404,13 @@ describe('serve-course', function() {
     });    
   });
   
+  describe('POST /u/:username/:key.history', () => {
+    
+    it('should require staff');
+    
+    it('should redirect to preview');
+  });
+  
   describe('POST /upload.csv', () => {
     
     let url = '/upload.csv';

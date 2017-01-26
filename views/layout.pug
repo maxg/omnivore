@@ -23,6 +23,14 @@ mixin value(value)
   else
     = value
 
+mixin editvalue(grade)
+  if types.is(grade.value, 'string') && grade.key.endsWith('-comment')
+    textarea(name=grade.key, rows=3, cols=30)=grade.value
+  else if types.is(grade.value, 'boolean number string')
+    input(type='text', name=grade.key, value=''+grade.value, size=10)
+  else
+    | Cannot edit #{types.which(grade.value, types.value_types)}
+
 mixin ts(ts)
   if ts
     = types.dateTimeString(new Date(ts))
