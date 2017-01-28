@@ -43,6 +43,9 @@ describe('Omnivore', function() {
         [ '/*/b', false ],
         [ '/a/*', false ],
         [ 'a/b', false ],
+        [ '/a/!b', false ],
+        [ '/a/b|c', false ],
+        [ '/a/b%', false ],
       ] ],
       [ 'key_path_query', [
         [ '', true ],
@@ -55,6 +58,13 @@ describe('Omnivore', function() {
         [ 'a/b', true ],
         [ '*/b', true ],
         [ 'a/*', true ],
+        [ 'a/!b', true ],
+        [ 'a/b!', false ],
+        [ 'a/b|c', true ],
+        [ 'a/|b|c', false ],
+        [ 'a/b|c|', false ],
+        [ 'a/b%', true ],
+        [ 'a/%b', false ],
       ] ],
       [ 'key_ltree_query', [
         [ '', true ],
@@ -65,6 +75,13 @@ describe('Omnivore', function() {
         [ '*.b', false ],
         [ '*{1}.b', true ],
         [ 'b.*{1}', true ],
+        [ 'a.!b', true ],
+        [ 'a.b!', false ],
+        [ 'a.b|c', true ],
+        [ 'a.|b|c', false ],
+        [ 'a.b|c|', false ],
+        [ 'a.b%', true ],
+        [ 'a.%b', false ],
       ] ],
     ]).forEach((pairs, type) => {
       describe(type, () => {

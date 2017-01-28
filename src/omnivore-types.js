@@ -34,8 +34,8 @@ const course_regex = /^[A-Z0-9]+\.[A-Z0-9]+\/(fa|ia|sp|su)\d\d$/;
 const agent_regex = /^\w+$/;
 const username_regex = /^\w+$/;
 const key_path_regex = /^(\/|(\/[\w-]+)+)$/;
-const key_path_query_regex = /^(\/|([\w-]+\*?|\*)?(\/([\w-]+\*?|\*))*)$/;
-const key_ltree_query_regex = /^(\w+\*?|\*\{\d\})?(\.(\w+\*?|\*\{\d\}))*$/;
+const key_path_query_regex = /^(\/|(\!?[\w-]+%?(\|[\w-]+%?)*\*?|\*)?(\/(\!?[\w-]+%?(\|[\w-]+%?)*\*?|\*))*)$/;
+const key_ltree_query_regex = /^(\!?[\w]+%?(\|[\w]+%?)*\*?|\*\{\d\})?(\.(\!?[\w]+%?(\|[\w]+%?)*\*?|\*\{\d\}))*$/;
 const timestamp_regex = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{3})?(Z|\+0000)$/;
 
 xtype.ext.registerType({

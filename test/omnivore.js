@@ -909,6 +909,54 @@ describe('Omnivore', function() {
       }));
     });
     
+    it('should add compute rule with negation', done => {
+      async.series([
+        cb => omni.compute('/test/!x', 'a', [ '!y/d' ], d => JSON.stringify(d), cb),
+        cb => omni.add('tester', 'alice', '/test/rules/c/d', now, 'yes', cb),
+        cb => omni.add('tester', 'alice', '/test/rules/y/d', now, 'no', cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[3].should.read([
+          { key: '/test/rules/a', value: '["yes"]' },
+          { key: '/test/rules/c/d', value: 'yes' },
+          { key: '/test/rules/y/d', value: 'no' },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should add compute rule with alternation', done => {
+      async.series([
+        cb => omni.compute('/test/fools|rules|xuls', 'a', [ 'a|b|c/d' ], d => JSON.stringify(d), cb),
+        cb => omni.add('tester', 'alice', '/test/rules/c/d', now, 'on', cb),
+        cb => omni.add('tester', 'alice', '/test/rules/e/d', now, 'off', cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[3].should.read([
+          { key: '/test/rules/a', value: '["on"]' },
+          { key: '/test/rules/c/d', value: 'on' },
+          { key: '/test/rules/e/d', value: 'off' },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should add compute rule with word matching', done => {
+      async.series([
+        cb => omni.compute('/test/rules%', 'a', [ 'x-y%/d' ], d => JSON.stringify(d), cb),
+        cb => omni.add('tester', 'alice', '/test/rules/x/d', now, 'pictures', cb),
+        cb => omni.add('tester', 'alice', '/test/rules/z-y-x/d', now, 'words', cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[3].should.read([
+          { key: '/test/rules/a', value: '["words"]' },
+          { key: '/test/rules/x/d', value: 'pictures' },
+          { key: '/test/rules/z-y-x/d', value: 'words' },
+        ]);
+        done();
+      }));
+    });
+    
     describe('environment', () => {
       
       function testEnvironment(fn) {
