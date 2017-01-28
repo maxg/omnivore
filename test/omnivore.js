@@ -936,7 +936,7 @@ describe('Omnivore', function() {
         });
       }));
       
-      it('should supply arguments', testEnvironment((cd, d) => {
+      it('should supply functions', testEnvironment((cd, d) => {
         sum.should.be.a.Function();
         assert.equal(sum([ 1, 3, 5 ]), 9);
         assert.equal(sum([]), 0);
