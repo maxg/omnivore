@@ -145,6 +145,8 @@ a.csv::before { content: '[csv]'; }
 .comment .key { text-align: right; }
 .comment .value { padding-left: 20px; padding-right: 0; }
 
+.value a { letter-spacing: -1px; }
+
 .roster[data-on]::before { content: '[=] '; }
 
 .staffer[data-on]::before { content: '[staff] '; }
