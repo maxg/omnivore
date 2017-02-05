@@ -324,7 +324,7 @@ describe('Omnivore', function() {
         cb => omni.add('tester', 'bob', '/test/alpha', now, 80, cb),
         cb => omni.compute('/test', 'beta', [ 'alpha' ], alpha => alpha / 2, cb),
         cb => omni.active('/test/alpha', now, cb),
-        cb => omni.visible('/test/*', now, cb),
+        cb => omni.visible('/test/alpha|beta|gamma|delta', now, cb),
       ], done);
     });
     
@@ -536,9 +536,34 @@ describe('Omnivore', function() {
     
     context('hidden', () => {
       
-      it('should not return hidden data');
+      beforeEach(done => {
+        async.series([
+          cb => omni.add('tester', 'alice', '/test/aleph', now, 100, cb),
+          cb => omni.add('tester', 'bob', '/test/aleph', now, 80, cb),
+          cb => omni.compute('/test', 'bet', [ 'aleph' ], alpha => alpha / 2, cb),
+          cb => omni.active('/test/aleph', now, cb),
+        ], done);
+      });
       
-      it('should not return hidden output');
+      it('should not return hidden data', done => {
+        async.series([
+          cb => omni.get({ username: 'alice', key: '/test/aleph', hidden: true }, cb),
+          cb => omni.get({ username: 'alice', key: '/test/aleph' }, cb),
+        ], bail(done, results => {
+          results.should.read([ [ { username: 'alice', value: 100 } ], [] ]);
+          done();
+        }));
+      });
+      
+      it('should not return hidden output', done => {
+        async.series([
+          cb => omni.get({ username: 'alice', key: '/test/bet', hidden: true }, cb),
+          cb => omni.get({ username: 'alice', key: '/test/bet' }, cb),
+        ], bail(done, results => {
+          results.should.read([ [ { username: 'alice', value: 50 } ], [] ]);
+          done();
+        }));
+      });
     });
     
     context('penalized', () => {
@@ -625,6 +650,11 @@ describe('Omnivore', function() {
         done();
       }));
     });
+    
+    it('should not return hidden data');
+    
+    it('should not return hidden output');
+  });
   
   describe('#history()', () => {
     
