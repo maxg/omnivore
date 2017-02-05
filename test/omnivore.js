@@ -1060,12 +1060,29 @@ describe('Omnivore', function() {
       }));
     });
     
+    it('should add asynchronous compute rule', done => {
+      async.series([
+        cb => omni.compute('/test/rules', 'a/b', [ 'c/d' ], d => async(cb => {
+          nextTick(() => cb(null, 'bye ' + d));
+        }), cb),
+        cb => omni.add('tester', 'alice', '/test/rules/c/d', now, 'bob', cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[2].should.read([
+          { key: '/test/rules/a/b', value: 'bye bob' },
+          { key: '/test/rules/c/d', value: 'bob' },
+        ]);
+        done();
+      }));
+    });
+    
     describe('environment', () => {
       
       function testEnvironment(fn) {
         return done => async.series([
           cb => omni.compute('/test/*', 'a', [ '*/*', 'd' ], fn, cb),
           cb => omni.multiadd('tester', [
+            { username: 'alice', key: '/test/rules/d', ts: t_minus(now, 1), value: 'w' },
             { username: 'bob', key: '/test/rules/b/d', ts: now, value: 'foo' },
             { username: 'alice', key: '/test/rules/c/b', ts: now, value: 'x' },
             { username: 'alice', key: '/test/rules/c/d', ts: now, value: 'y' },
@@ -1080,14 +1097,21 @@ describe('Omnivore', function() {
         assert.equal(d, 'z');
       }));
       
-      it('should supply rows', testEnvironment((cd, d) => {
+      it('should supply rows', testEnvironment(() => {
         rows.should.read({
           '/test/rules/*/*': [ { key: '/test/rules/b/d', value: null }, { key: '/test/rules/c/d', value: 'y' } ],
           '/test/rules/d': [ { key: '/test/rules/d', value: 'z' } ],
         });
       }));
       
-      it('should supply functions', testEnvironment((cd, d) => {
+      it('should supply #raw()', testEnvironment(() => async(cb => {
+        rows['/test/rules/d'][0].raw((err, raw) => {
+          raw.should.read([ { key: '/test/rules/d', value: 'w' }, { key: '/test/rules/d', value: 'z' } ]);
+          cb(err);
+        });
+      })));
+      
+      it('should supply sum()', testEnvironment(() => {
         sum.should.be.a.Function();
         assert.equal(sum([ 1, 3, 5 ]), 9);
         assert.equal(sum([]), 0);

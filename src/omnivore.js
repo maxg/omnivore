@@ -539,6 +539,9 @@ Omnivore.prototype._evaluate = types.check([ 'row', 'row_array' ], [ 'row' ],
   let rows = {};
   let args = output.inputs.map(query => {
     let matched = rows[types.convertOut(query, 'key')] = types.convertOut(inputs.filter(input => input.query == query), 'row_array');
+    matched.forEach(input => {
+      input.raw = done => this.history({ username: input.username, key: input.key, only_raw: true, hidden: true }, done);
+    });
     let vals = matched.map(input => input.value);
     if (lquery_ops_regex.test(query)) { return vals; }
     assert(vals.length <= 1);
@@ -546,15 +549,19 @@ Omnivore.prototype._evaluate = types.check([ 'row', 'row_array' ], [ 'row' ],
   });
   
   let fn = this._functions[output.compute] || this._prepare(output.compute);
+  let complete = (err, value) => done(err, Object.assign({}, output, { ts, value }));
   let context = {
     args,
     rows,
     sum: arr => arr.reduce((a, b) => a + b, 0),
+    async: asyncfn => { asyncfn(complete); return complete; },
     console,
     assert,
+    nextTick: process.nextTick,
   };
   
-  done(null, Object.assign({}, output, { ts, value: fn.runInNewContext(context) }));
+  let result = fn.runInNewContext(context);
+  if (result !== complete) { complete(null, result); }
 });
 
 Omnivore.prototype._prepare = function _prepare(fn) {
@@ -562,7 +569,7 @@ Omnivore.prototype._prepare = function _prepare(fn) {
   
   return this._functions[fn] = new vm.Script('(' + fn + ')(...args)', {
     filename: `<${fn}>`,
-    timeout: 1000,
+    timeout: 1500,
   });
 };
 
