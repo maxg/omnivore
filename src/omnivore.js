@@ -357,7 +357,6 @@ Omnivore.prototype.leaves = client(transaction(
   ], done);
 })));
 
-// TODO TEST
 // get history
 Omnivore.prototype.history = client(transaction(
                              types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
@@ -368,10 +367,10 @@ Omnivore.prototype.history = client(transaction(
     cb => client.logQuery({
       name: 'history-select-history',
       text: `SELECT * FROM history
-             WHERE ($1 IS NULL OR username = $1) AND ($2 IS NULL OR key = $2) AND (visible OR $3)
+             WHERE ($1 IS NULL OR username = $1) AND ($2 IS NULL OR key = $2) AND (raw OR $3) AND (visible OR $4)
              ORDER BY username, key, created DESC`,
       types: [ types.pg.TEXT, types.pg.LTREE, types.pg.BOOL ],
-      values: [ spec.username, spec.key, spec.hidden ],
+      values: [ spec.username, spec.key, ! spec.only_raw, spec.hidden ],
     }, cb),
     (result, cb) => cb(null, result.rows),
   ], done);

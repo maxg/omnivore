@@ -625,6 +625,79 @@ describe('Omnivore', function() {
         done();
       }));
     });
+  
+  describe('#history()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 80, cb),
+        cb => omni.add('tester', 'bob', '/test/alpha', now, 100, cb),
+        cb => omni.add('tester', 'bob', '/test/gamma', now, 70, cb),
+        cb => omni.compute('/test', 'beta', [ 'alpha' ], alpha => alpha / 2, cb),
+        cb => omni.compute('/test', 'delta', [ 'alpha' ], alpha => alpha * 2, cb),
+        cb => omni.active('/test/*', now, cb),
+        cb => omni.visible('/test/alpha|beta', now, cb),
+        cb => omni.multiget([ 'test/alpha', '/test/beta', 'test/gamma', 'test/delta' ], { hidden: true }, cb),
+        cb => omni.add('tester', 'alice', '/test/alpha', t_plus(now, 1), 90, cb),
+        cb => omni.add('tester', 'bob', '/test/beta', t_plus(now, 1), 10, cb),
+      ], done);
+    });
+    
+    it('should return history for user + key', done => {
+      omni.history({ username: 'alice', key: '/test/alpha' }, bail(done, rows => {
+        rows.should.read([
+          { username: 'alice', ts: t_plus(now, 1), value: 90, raw: true },
+          { username: 'alice', ts: now, value: 80, raw: false },
+          { username: 'alice', ts: now, value: 80, raw: true },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should return all history for key', done => {
+      omni.history({ key: '/test/beta' }, bail(done, rows => {
+        rows.should.read([
+          { username: 'alice', ts: now, value: 40, raw: false },
+          { username: 'bob', ts: t_plus(now, 1), value: 10, raw: true },
+          { username: 'bob', ts: now, value: 50, raw: false },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should not return hidden data or output', done => {
+      async.series([
+        cb => omni.history({ key: '/test/gamma', hidden: true }, cb),
+        cb => omni.history({ key: '/test/gamma' }, cb),
+        cb => omni.history({ key: '/test/delta', hidden: true }, cb),
+        cb => omni.history({ key: '/test/delta' }, cb),
+      ], bail(done, results => {
+        results.should.read([
+          [ { username: 'bob', value: 70 }, { username: 'bob', value: 70 } ],
+          [],
+          [ { username: 'alice', value: 160 }, { username: 'bob', value: 200 } ],
+          [],
+        ]);
+        done();
+      }));
+    });
+    
+    it('should only return raw data', done => {
+      async.series([
+        cb => omni.history({ key: '/test/alpha', only_raw: true }, cb),
+        cb => omni.history({ key: '/test/beta', only_raw: true }, cb),
+      ], bail(done, results => {
+        results.should.read([
+          [
+            { username: 'alice', value: 90 },
+            { username: 'alice', value: 80 },
+            { username: 'bob', value: 100 }
+          ],
+          [ { username: 'bob', value: 10 } ],
+        ]);
+        done();
+      }));
+    });
   });
   
   describe('#allStaff()', () => {
