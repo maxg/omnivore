@@ -84,6 +84,7 @@ const convertIn = exports.convertIn = function convertIn(val, type) {
   assertType(val, type);
   switch (type) {
     case 'key':
+    case 'key_path_query':
       assertType(val, 'key_path_query');
       return val ? val.replace(/-/g, '_')
                       .replace(/(^|\/)\*/g, '/*{1}')
@@ -109,6 +110,7 @@ const convertOut = exports.convertOut = function convertOut(val, type) {
   assertType(val, type);
   switch (type) {
     case 'key':
+    case 'key_ltree_query':
       assertType(val, 'key_ltree_query');
       return val ? '/' + val.replace(/_/g, '-')
                             .replace(/\*\{3\}/g, '*.*.*') // XXX

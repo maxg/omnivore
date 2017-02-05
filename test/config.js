@@ -38,6 +38,14 @@ should.Assertion.add('read', function(expect) {
     this.obj.should.be.an.instanceof(Date);
     return should(this.obj.getTime()).equal(expect.getTime());
   }
+  if (xtype.is(expect, RegExp)) {
+    if (xtype.is(this.obj, 'string')) {
+      this.obj.should.match(expect);
+    } else {
+      this.obj.should.equal(expect);
+    }
+    return;
+  }
   should.fail(this.obj, expect, `cannot use should.read with ${xtype(expect)}`);
 });
 

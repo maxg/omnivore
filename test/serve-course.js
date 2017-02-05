@@ -401,7 +401,52 @@ describe('serve-course', function() {
           done(err);
         });
       }));
-    });    
+    });
+    
+    it('should restrict to roster', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(multi_url + '?roster=1', bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        csv.parse(body, { relax_column_count: true }, (err, sheet) => {
+          sheet.should.read([
+            [ 'username', '/test/class-1/nanoquiz', '/test/class-2/nanoquiz', /exported/ ],
+            [ 'alice', '10', '8' ],
+          ]);
+          done(err);
+        });
+      }));
+    });
+  });
+  
+  describe('GET /grades/:query.csv', () => {
+    
+    let url = '/grades/*/*/nanoquiz.csv';
+    
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
+    
+    it('should redirect to CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(303);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}/grades/test/class-1/nanoquiz,/test/class-2/nanoquiz.csv`);
+        done();
+      }));
+    });
+    
+    it('should include options', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(url + '?roster=1', bail(done, (res, body) => {
+        res.statusCode.should.eql(303);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.endWith('.csv?roster=1');
+        done();
+      }));
+    });
   });
   
   describe('POST /u/:username/:key.history', () => {

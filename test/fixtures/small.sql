@@ -13,3 +13,8 @@ INSERT INTO raw_data VALUES
     ('alice', 'test.class_2.nanoquiz', CURRENT_TIMESTAMP - INTERVAL '1 day', '8', 'tester');
     --('bob', 'test.class_2.nanoquiz', missing)
     --(any, 'test.class_3.nanoquiz', missing)
+
+UPDATE users SET on_roster = true WHERE username IN (
+  'alice'
+  --'bob'
+);

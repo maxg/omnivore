@@ -60,6 +60,13 @@ exports.createApp = function createApp(omni) {
     next();
   });
   
+  app.param('query', (req, res, next, query) => {
+    query = '/' + query;
+    if ( ! omnivore.types.is(query, 'key_path_query')) { return next('route'); }
+    res.locals.query = req.params.query = query;
+    next();
+  });
+  
   app.param('upload_id', (req, res, next, keys) => {
     if( ! upload_id_regex.test(req.params.upload_id)) { return next('route'); }
     next();
@@ -222,13 +229,22 @@ exports.createApp = function createApp(omni) {
   app.get('/grades/:keys(*).csv', staffonly, (req, res, next) => {
     let prefix = omnivore.types.common(req.params.keys).slice(1);
     let filename = `${omni.course}-${prefix || 'grades'}.csv`.replace(/\//g, '-');
-    let spec = { hidden: true };
+    let spec = { only_roster: !! req.query.roster, hidden: true };
     omni.multiget(req.params.keys, spec, (err, rows) => {
       if (err) { return next(err); }
       res.attachment(filename);
       omnivore.csv.stringify(req.params.keys, rows, [
         `exported ${omnivore.types.dateTimeString(new Date())} by ${res.locals.authuser}`
       ]).pipe(res);
+    });
+  });
+  
+  app.get('/grades/:query(*).csv', staffonly, (req, res, next) => {
+    omni.findKeys(req.params.query, { hidden: true }, (err, rows) => {
+      if (err) { return next(err); }
+      let keys = rows.map(row => row.key).join(',');
+      let options = req.url.substr(`${req.url}?`.indexOf('?'));
+      res.redirect(303, `/${omni.course}/grades${keys}.csv${options}`);
     });
   });
   

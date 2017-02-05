@@ -279,10 +279,10 @@ Omnivore.prototype.multiget = client(transaction(
     cb => client.logQuery({
       name: 'multiget-select-grades',
       text: `SELECT * FROM grades
-             WHERE ($1 IS NULL OR username = $1) AND (key ? $2) AND (visible OR $3)
+             WHERE ($1 IS NULL OR username = $1) AND (key ? $2) AND (on_roster OR $3) AND (visible OR $4)
              ORDER BY username, key`,
       types: [ types.pg.TEXT, types.pg.LQUERYarray, types.pg.BOOL ],
-      values: [ spec.username, keys, spec.hidden ],
+      values: [ spec.username, keys, ! spec.only_roster, spec.hidden ],
     }, cb),
     (result, cb) => this._current(client, result.rows, cb),
     (rows, cb) => {
@@ -352,6 +352,25 @@ Omnivore.prototype.leaves = client(transaction(
              WHERE (key ~ $1) AND (visible OR $2)
              ORDER BY key_order, key`,
       values: [ spec.key ? `${spec.key}.*{1}` : '*{1}', spec.hidden ],
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+  ], done);
+})));
+
+// TODO TEST
+// query for keys
+Omnivore.prototype.findKeys = client(transaction(
+                              types.translate([ pg.Client, 'key_path_query', 'spec' ], [ 'row_array' ],
+                              function _findKeys(client, query, spec, done) {
+  // console.log('findKeys', query, spec);
+  
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'findKeys-select-keys',
+      text: `SELECT * FROM keys LEFT JOIN key_orders USING (key)
+             WHERE (key ~ $1) AND (visible OR $2)
+             ORDER BY key_order, key`,
+      values: [ query, spec.hidden ],
     }, cb),
     (result, cb) => cb(null, result.rows),
   ], done);
