@@ -250,71 +250,72 @@ exports.createApp = function createApp(omni) {
   
   const pending_uploads = new Map();
   
-  function create_upload(username, keys, rows) {
+  function create_upload(username, data) {
     let upload_id = uuid.v4();
     let timeout = 1000 * 60 * 60 * 24; // 1 day
     pending_uploads.set(upload_id, {
       username,
       created: new Date(),
       timeout: new Date(Date.now() + timeout),
-      keys,
-      rows,
+      data,
     });
     setTimeout(() => pending_uploads.delete(upload_id), timeout);
     return upload_id;
   }
   
+  function get_upload(req, res, next) {
+    res.locals.upload = pending_uploads.get(req.params.upload_id);
+    if ( ! res.locals.upload) { return res.status(404).render('404'); }
+    next();
+  }
+  
   app.post('/u/:username/:key(*).history', staffonly, body_parser.urlencoded({ extended: false }), (req, res, next) => {
-    let upload_id = create_upload(res.locals.authuser, [ req.params.key ], [ {
-      username: req.params.username,
-      values: [ omnivore.csv.convert(req.body[req.params.key]) ],
-    } ]);
+    let upload_id = create_upload(res.locals.authuser, {
+      keys: [ req.params.key ],
+      rows: [ {
+        username: req.params.username,
+        values: [ omnivore.csv.convert(req.body[req.params.key]) ],
+      } ],
+    });
     res.redirect(303, `/${omni.course}/upload/${upload_id}`);
   });
   
-  app.post('/upload.csv', staffonly, multer().single('csv'), (req, res, next) => {
+  app.post('/upload.csv', staffonly, multer().single('grades'), (req, res, next) => {
     omnivore.csv.parse(req.file.buffer).once('parsed', (keys, rows) => {
-      let upload_id = create_upload(res.locals.authuser, keys, rows);
+      let upload_id = create_upload(res.locals.authuser, { keys, rows });
       res.redirect(303, `/${omni.course}/upload/${upload_id}`);
     });
   });
   
-  app.get('/upload/:upload_id', staffonly, (req, res, next) => {
-    let upload = pending_uploads.get(req.params.upload_id);
-    if ( ! upload) { return res.status(404).render('404'); }
-    
+  app.get('/upload/:upload_id', staffonly, get_upload, (req, res, next) => {
+    let data = res.locals.upload.data;
     async.auto({
-      keys: cb => omni.keys(upload.keys, cb),
-      users: cb => omni.users(upload.rows.map(row => row.username), cb),
+      keys: cb => omni.keys(data.keys, cb),
+      users: cb => omni.users(data.rows.map(row => row.username), cb),
     }, (err, results) => {
       if (err) { return next(err); }
       res.locals.fullpage = true;
       res.render('upload-preview', {
-        upload: Object.assign({}, upload, {
-          keys: results.keys,
-          rows: upload.rows.map(row => Object.assign({}, row, results.users.shift())),
-        }),
+        keys: results.keys,
+        rows: data.rows.map(row => Object.assign({}, row, results.users.shift())),
       });
     });
   });
   
-  app.post('/upload/:upload_id', staffonly, (req, res, next) => {
-    let upload = pending_uploads.get(req.params.upload_id);
-    if ( ! upload) { return res.status(404).render('404'); }
-    
-    let valid = upload.rows.filter(row => omnivore.types.is(row.username, 'username'));
-    let rows = Array.prototype.concat.call(...valid.map(row => upload.keys.map((key, idx) => ({
+  app.post('/upload/:upload_id', staffonly, get_upload, (req, res, next) => {
+    let data = res.locals.upload.data;
+    let valid = data.rows.filter(row => omnivore.types.is(row.username, 'username'));
+    let rows = Array.prototype.concat.call(...valid.map(row => data.keys.map((key, idx) => ({
       username: row.username,
       key,
-      ts: upload.created,
+      ts: res.locals.upload.created,
       value: row.values[idx],
     })))).filter(row => omnivore.types.is(row.value, 'value'));
     omni.multiadd(res.locals.authuser, rows, err => {
       if (err) { return next(err); }
       res.render('upload-saved', {
-        upload,
         valid: rows.length,
-        invalid: upload.keys.length * upload.rows.length - rows.length,
+        invalid: data.keys.length * data.rows.length - rows.length,
       });
     });
   });

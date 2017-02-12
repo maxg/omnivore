@@ -14,7 +14,7 @@ append content
   p Keys
   table
     tbody
-      each key in upload.keys
+      each key in upload.data.keys
         tr
           td.bullet
           td.key: a(href=`/${course}/grades${key}`): +key(key)

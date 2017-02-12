@@ -459,7 +459,7 @@ describe('serve-course', function() {
   describe('POST /upload.csv', () => {
     
     let url = '/upload.csv';
-    let formData = { csv: { value: 'username\n', options: { filename: 'upload.csv' } } };
+    let formData = { grades: { value: 'username\n', options: { filename: 'upload.csv' } } };
     
     it('should require staff', done => {
       req.headers({ [x_auth_user]: 'alice' }).post(url, { formData }, bail(done, (res, body) => {
@@ -483,7 +483,7 @@ describe('serve-course', function() {
   describe('GET /upload/:upload_id', () => {
     
     let upload_url = '/upload.csv';
-    let formData = { csv: { value: 'username,/foo\nalice,12.3\n', options: { filename: 'upload.csv' } } };
+    let formData = { grades: { value: 'username,/foo\nalice,12.3\n', options: { filename: 'upload.csv' } } };
     let save_url;
     
     before(done => {
@@ -526,7 +526,7 @@ describe('serve-course', function() {
   describe('POST /upload/:upload_id', () => {
     
     let upload_url = '/upload.csv';
-    let formData = { csv: {
+    let formData = { grades: {
       value: 'username,/test/class-2/nanoquiz,/test/class-3/nanoquiz\nalice,7,0\nbob,6',
       options: { filename: 'upload.csv' },
     } };

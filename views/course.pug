@@ -13,13 +13,13 @@ append content
       br
       
       p: a(href='users/') All users
-      
       p: a(href='grades/') All grades
       
-      p Upload grades...
+      br
       
+      p Upload grades
       form(action='upload.csv' method='post' enctype='multipart/form-data')
         p: span.btn.btn-default.btn-file
           span.btn-file-label Select CSV
-          input(name='csv', type='file', accept='.csv')
+          input(name='grades', type='file', accept='.csv')
         p: button.btn.btn-default Upload

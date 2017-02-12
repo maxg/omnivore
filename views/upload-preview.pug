@@ -26,13 +26,13 @@ append content
       tr
       th
       th
-      each key in upload.keys
+      each key in keys
         th.key: a(href=`/${course}/grades${key.key}`)
           +arrow(key.inputs.length)
           | #{key.key}
           +arrow(key.outputs.length)
     tbody
-      each row in upload.rows
+      each row in rows
         tr(data-invalid=!types.is(row.username, 'username'))
           td.roster(data-on=row.on_roster, data-type=row.exists ? '' : 'none')
           td.user.staffer(data-on=row.on_staff): a(href=`/${course}/u/${row.username}`)= row.username
