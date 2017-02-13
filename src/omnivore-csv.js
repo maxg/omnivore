@@ -21,6 +21,8 @@ exports.stringify = function stringify(keys, rows, comments) {
 };
 
 exports.parse = function parse(input) {
+  types.assert(input, [ Buffer, 'string' ]);
+  
   let sheet = csv.parse({
     relax_column_count: true,
     skip_empty_lines: true,
