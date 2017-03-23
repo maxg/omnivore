@@ -67,6 +67,13 @@ exports.createApp = function createApp(omni) {
     next();
   });
   
+  app.param('queries', (req, res, next, queries) => {
+    queries = ('/' + queries).split(',');
+    if ( ! queries.every(query => omnivore.types.is(query, 'key_path_query'))) { return next('route'); }
+    req.params.queries = queries;
+    next();
+  });
+  
   app.param('upload_id', (req, res, next, keys) => {
     if( ! upload_id_regex.test(req.params.upload_id)) { return next('route'); }
     next();
@@ -239,10 +246,13 @@ exports.createApp = function createApp(omni) {
     });
   });
   
-  app.get('/grades/:query(*).csv', staffonly, (req, res, next) => {
-    omni.findKeys(req.params.query, { hidden: true }, (err, rows) => {
+  app.get('/grades/:queries(*).csv', staffonly, (req, res, next) => {
+    async.map(req.params.queries, (query, cb) => {
+      omni.findKeys(query, { hidden: true }, cb);
+    }, (err, rowarrs) => {
       if (err) { return next(err); }
-      let keys = rows.map(row => row.key).join(',');
+      let keys = rowarrs.reduce((a, b) => a.concat(b.map(row => row.key)), []);
+      keys.sort();
       let options = req.url.substr(`${req.url}?`.indexOf('?'));
       res.redirect(303, `/${omni.course}/grades${keys}.csv${options}`);
     });
