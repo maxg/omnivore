@@ -8,7 +8,7 @@ set -e
 
 node src/serve-frontend |
 if [ "$NODE_ENV" == production ]; then
-    TODO
+    cat # TODO
 else
     node_modules/.bin/bunyan --output short
 fi

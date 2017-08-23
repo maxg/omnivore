@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#
+# List databases.
+#
+
+set -e
+
+psql -d postgres -c "
+    SELECT datname AS course,
+           pg_catalog.pg_size_pretty(pg_catalog.pg_database_size(datname)) AS SIZE
+    FROM pg_catalog.pg_database
+    WHERE datname LIKE '%/%'
+    ORDER BY course
+"
