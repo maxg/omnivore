@@ -178,6 +178,8 @@ CREATE TABLE IF NOT EXISTS all_data (
     UNIQUE (username, key, ts, value, penalty_applied, agent),
     CONSTRAINT all_data_refs_raw_data FOREIGN KEY (username, key, ts, agent) REFERENCES raw_data (username, key, ts, agent)
 );
+CREATE UNIQUE INDEX all_data_unique_with_null_penalty_applied ON all_data (username, key, ts, value, agent) WHERE penalty_applied IS NULL;
+CREATE INDEX all_data_key_gist ON all_data USING gist(key);
 
 CREATE OR REPLACE RULE all_data_prevent_update AS ON UPDATE TO all_data DO INSTEAD NOTHING;
 
@@ -232,6 +234,7 @@ CREATE TABLE IF NOT EXISTS all_computed (
     created TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (username, key, ts, value, penalty_applied)
 );
+CREATE UNIQUE INDEX all_computed_unique_with_null_penalty_applied ON all_computed (username, key, ts, value) WHERE penalty_applied IS NULL;
 CREATE INDEX all_computed_key_gist ON all_computed USING gist(key);
 
 -- XXX improve w/o breaking concurrent transactions?
