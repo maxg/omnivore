@@ -417,12 +417,14 @@ describe('serve-course', function() {
     });
   });
   
-  describe('GET /grades/:query.csv', () => {
+  describe('GET /grades/:queries.csv', () => {
     
-    let url = '/grades/*/*/nanoquiz.csv';
+    let single = '/grades/*/*/nanoquiz.csv';
+    let multiple = '/grades/*/class-2/*,/*/class-1/nanoquiz.csv';
+    let expanded = '/grades/test/class-1/nanoquiz,/test/class-2/nanoquiz.csv';
     
     it('should require staff', done => {
-      req.headers({ [x_auth_user]: 'alice' }).get(url, bail(done, (res, body) => {
+      req.headers({ [x_auth_user]: 'alice' }).get(single, bail(done, (res, body) => {
         res.statusCode.should.eql(200);
         app.render.templates().should.eql([ '401' ]);
         body.should.match(/permission denied/);
@@ -430,17 +432,26 @@ describe('serve-course', function() {
       }));
     });
     
-    it('should redirect to CSV', done => {
-      req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
+    it('should redirect single query to CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(single, bail(done, (res, body) => {
         res.statusCode.should.eql(303);
         app.render.templates().should.eql([]);
-        res.headers.location.should.eql(`/${course}/grades/test/class-1/nanoquiz,/test/class-2/nanoquiz.csv`);
+        res.headers.location.should.eql(`/${course}${expanded}`);
+        done();
+      }));
+    });
+    
+    it('should redirect multiple queries to CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(multiple, bail(done, (res, body) => {
+        res.statusCode.should.eql(303);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}${expanded}`);
         done();
       }));
     });
     
     it('should include options', done => {
-      req.headers({ [x_auth_user]: 'staffer' }).get(url + '?roster=1', bail(done, (res, body) => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(single + '?roster=1', bail(done, (res, body) => {
         res.statusCode.should.eql(303);
         app.render.templates().should.eql([]);
         res.headers.location.should.endWith('.csv?roster=1');
