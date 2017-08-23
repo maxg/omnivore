@@ -11,7 +11,7 @@ const cookie_parser = require('cookie-parser');
 const express = require('express');
 const multer = require('multer');
 const response_time = require('response-time');
-const uuid = require('node-uuid');
+const uuidv4 = require('uuid/v4');
 
 const logger = require('./logger');
 const omnivore = require('./omnivore');
@@ -261,7 +261,7 @@ exports.createApp = function createApp(omni) {
   const pending_uploads = new Map();
   
   function create_upload(username, data) {
-    let upload_id = uuid.v4();
+    let upload_id = uuidv4();
     let timeout = 1000 * 60 * 60 * 24; // 1 day
     pending_uploads.set(upload_id, {
       username,

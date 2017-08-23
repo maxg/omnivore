@@ -4,10 +4,7 @@ cd "$1"
 
 user=$2
 
-postgresql_version='9.5'
-
-# Development
-apt-get install -y git
+postgresql_version='9.6'
 
 # Apt Repositories
 cat > /etc/apt/sources.list.d/nodesource.list <<< 'deb https://deb.nodesource.com/node_6.x trusty main'
@@ -15,6 +12,9 @@ wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
 cat > /etc/apt/sources.list.d/pgdg.list <<< "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main $postgresql_version"
 wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 apt-get update
+
+# Development
+apt-get install -y git
 
 # Node
 apt-get install -y nodejs build-essential
