@@ -92,6 +92,11 @@ body.staffpage nav.navbar {
   cursor: inherit;
   display: block;
 }
+.btn-file.drag-drop-hover {
+  color: rgb(243, 255, 226);
+  background: rgb(235, 127, 0);
+  border-color: rgb(243, 255, 226);
+}
 
 table {
   border-collapse: collapse;

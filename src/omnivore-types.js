@@ -50,6 +50,7 @@ xtype.ext.registerType({
   agent:     { definition: { validator: val => xtype.isString(val) && agent_regex.test(val) } },
   username:  { definition: { validator: val => xtype.isString(val) && username_regex.test(val) } },
   maybe_username: { definition: 'undefined, username' },
+  username_array: { definition: { validator: val => xtype.isArray(val) && xtype.all.isUsername(val) } },
   key:       { definition: { validator: val => xtype.isString(val) } },
   key_path:  { definition: { validator: val => xtype.isString(val) && key_path_regex.test(val) } },
   key_path_query:  { definition: { validator: val => xtype.isString(val) && key_path_query_regex.test(val) } },

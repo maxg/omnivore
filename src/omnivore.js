@@ -642,6 +642,25 @@ Omnivore.prototype.users = client(
   ], done);
 }));
 
+Omnivore.prototype.setRoster = client(transaction(
+                               types.translate([ pg.Client, 'agent', 'username_array '], [ 'any' ],
+                               function _setRoster(client, agent, usernames, done) {
+  async.waterfall([
+   cb => client.logQuery({
+     name: 'setRoster-insert-users',
+     text: `INSERT INTO users (username, on_roster) SELECT UNNEST($1), true ON CONFLICT DO NOTHING`,
+     types: [ types.pg.TEXTarray ],
+     values: [ usernames ],
+   }, cb),
+   (_, cb) => client.logQuery({
+     name: 'setRoster-update-users',
+     text: `UPDATE users SET on_roster = username = ANY($1)`,
+     types: [ types.pg.TEXTarray ],
+     values: [ usernames ],
+   }, cb),
+  ], done);
+})));
+
 Omnivore.prototype.keys = client(
                           types.translate([ pg.Client, 'key_array' ], [ 'row_array' ],
                           function _keys(client, keys, done) {

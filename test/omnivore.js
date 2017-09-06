@@ -803,6 +803,45 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('#setRoster()', () => {
+    
+    it('should add users', done => {
+      async.series([
+        cb => omni.setRoster('tester', [ 'alice' ], cb),
+        cb => omni.allUsers(cb),
+      ], bail(done, results => {
+        results[1].should.read([ { username: 'alice', on_roster: true } ]);
+        done();
+      }));
+    });
+    
+    it('should add to and remove from roster', done => {
+      async.series([
+        cb => omni.multiadd('tester', [ 'alice', 'bob', 'yolanda', 'zach' ].map(username => {
+          return { username, key: '/test/alpha', ts: now, value: 10 };
+        }), cb),
+        cb => omni.setRoster('tester', [ 'alice', 'bob' ], cb),
+        cb => omni.allUsers(cb),
+        cb => omni.setRoster('tester', [ 'yolanda', 'bob' ], cb),
+        cb => omni.allUsers(cb),
+      ], bail(done, results => {
+        results[2].should.read([
+          { username: 'alice', on_roster: true },
+          { username: 'bob', on_roster: true },
+          { username: 'yolanda', on_roster: false },
+          { username: 'zach', on_roster: false },
+        ]);
+        results[4].should.read([
+          { username: 'bob', on_roster: true },
+          { username: 'yolanda', on_roster: true },
+          { username: 'alice', on_roster: false },
+          { username: 'zach', on_roster: false },
+        ]);
+        done();
+      }));
+    });
+  });
+  
   describe('#keys()', () => {
     
     beforeEach(done => {

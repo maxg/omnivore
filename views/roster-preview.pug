@@ -1,0 +1,37 @@
+extends layout
+
+append head
+  title Update Roster - #{course} - Omnivore
+
+append content
+  
+  .staff
+    p Previewing updated roster
+    p created #{upload.created} #[br] by #{upload.username} #[br] expires #{upload.timeout}
+    p To save this roster:
+    
+    form(method='post')
+      p: button.btn.btn-default Save
+  
+  table
+    tr
+      td
+        p Adding #{adding.length}
+        each user in adding
+          = user
+          br
+      td
+      td
+        p Removing #{removing.length}
+        each user in removing
+          = user
+          br
+  
+  p Roster
+  
+  table.sheet
+    tbody
+      each row in users
+        tr(data-invalid=!types.is(row.username, 'username'))
+          td.roster(data-on=row.on_roster, data-type=row.exists ? '' : 'none')
+          td.user.staffer(data-on=row.on_staff): a(href=`/${course}/u/${row.username}`)= row.username

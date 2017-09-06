@@ -17,9 +17,13 @@ append content
       
       br
       
+      p: a(href='roster/') Edit roster
+      
+      br
+      
       p Upload grades
       form(action='upload.csv' method='post' enctype='multipart/form-data')
         p: span.btn.btn-default.btn-file
-          span.btn-file-label Select CSV
+          span.btn-file-label Select or drop CSV
           input(name='grades', type='file', accept='.csv')
-        p: button.btn.btn-default Upload
+        p: button.btn.btn-default.btn-upload(disabled) Upload

@@ -330,6 +330,45 @@ exports.createApp = function createApp(omni) {
     });
   });
   
+  app.get('/roster/', staffonly, (req, res, next) => {
+    omni.allUsers((err, users) => {
+      if (err) { return next(err); }
+      res.render('roster', { roster: users.filter(row => row.on_roster).map(row => row.username) });
+    });
+  });
+  app.get('/roster', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
+  
+  app.post('/roster/', staffonly, body_parser.urlencoded({ extended: false }), (req, res, next) => {
+    let upload_id = create_upload(res.locals.authuser, {
+      users: req.body.roster.split(/\r?\n/).map(username => username.trim().toLowerCase()).filter(username => username),
+    });
+    res.redirect(303, `/${omni.course}/roster/${upload_id}`);
+  });
+  
+  app.get('/roster/:upload_id', staffonly, get_upload, (req, res, next) => {
+    async.auto({
+      users: cb => omni.users(res.locals.upload.data.users, cb),
+      allUsers: cb => omni.allUsers(cb),
+    }, (err, results) => {
+      if (err) { return next(err); }
+      let newroster = results.users.filter(row => omnivore.types.is(row.username, 'username')).map(row => row.username);
+      let oldroster = results.allUsers.filter(row => row.on_roster).map(row => row.username);
+      res.render('roster-preview', {
+        users: results.users,
+        adding: newroster.filter(username => ! oldroster.includes(username)),
+        removing: oldroster.filter(username => ! newroster.includes(username)),
+      });
+    });
+  });
+  
+  app.post('/roster/:upload_id', staffonly, get_upload, (req, res, next) => {
+    let valid = res.locals.upload.data.users.filter(username => omnivore.types.is(username, 'username'));
+    omni.setRoster(res.locals.authuser, valid, err => {
+      if (err) { return next(err); }
+      res.redirect(303, `/${omni.course}/users/`);
+    });
+  });
+  
   app.get('/users/', staffonly, (req, res, next) => {
     omni.allUsers((err, users) => {
       if (err) { return next(err); }
