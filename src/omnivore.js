@@ -498,7 +498,7 @@ Omnivore.prototype._penalize = types.check([ pg.Client, 'row' ], [ 'row' ],
   let context = { args: [ row.deadline, row.ts, row.value ] };
   
   done(null, Object.assign({}, row, {
-    value: fn.runInNewContext(context),
+    value: fn(context),
     penalty_applied: row.penalty_id,
   }));
 });
@@ -572,24 +572,33 @@ Omnivore.prototype._evaluate = types.check([ 'row', 'row_array' ], [ 'row' ],
   let context = {
     args,
     rows,
-    sum: arr => arr.reduce((a, b) => a + b, 0),
     async: asyncfn => { asyncfn(complete); return complete; },
-    console,
-    assert,
-    nextTick: process.nextTick,
   };
   
-  let result = fn.runInNewContext(context);
+  let result = fn(context);
   if (result !== complete) { complete(null, result); }
 });
 
 Omnivore.prototype._prepare = function _prepare(fn) {
   types.assert(fn, 'string');
   
-  return this._functions[fn] = new vm.Script('(' + fn + ')(...args)', {
+  let script = new vm.Script(`
+    (({ args, rows, async }) => { delete call; return (${fn})(...args); })(call)
+  `, {
     filename: `<${fn}>`,
     timeout: 1500,
   });
+  let context = vm.createContext({
+    sum: arr => arr.reduce((a, b) => a + b, 0),
+    console,
+    assert,
+    nextTick: process.nextTick,
+  });
+  return this._functions[fn] = call => {
+    assert(context.call === undefined);
+    context.call = call;
+    return script.runInContext(context);
+  };
 };
 
 Omnivore.prototype.allStaff = client(
