@@ -20,8 +20,12 @@ mixin value(value)
       if idx
         | ,
       |  #{elt}
-  else if types.is(value, 'string') && /^https?:\/\/\S+$/.test(value)
-    a(href=value)= value
+  else if types.is(value, 'string')
+    each piece in value.split(/(\n)/)
+      if /^https?:\/\/\S+$/.test(piece)
+        a(href=piece)= piece
+      else
+        = piece
   else
     = value
 

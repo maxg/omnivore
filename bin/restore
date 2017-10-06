@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+source=${1:?source required}
+
+prefix=${source%/}
+date=${prefix##*/}
+prefix=${prefix%/*}
+semester=${prefix##*/}
+prefix=${prefix%/*}
+clazz=${prefix##*/}
+
+course="$clazz/$semester"
+
+echo "Drop $course and restore from $date"
+
+dropdb --interactive --if-exists "$course"
+createdb "$course"
+pg_restore -v --dbname="$course" --schema=public --no-owner "$source"
