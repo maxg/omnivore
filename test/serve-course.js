@@ -41,6 +41,14 @@ describe('serve-course', function() {
   
   after(done => server.close(done));
   
+  before(done => {
+    omni.pg((client, done) => {
+      async.series([
+        cb => client.query(fixtures('base'), cb),
+        cb => client.query(fixtures('small'), cb),
+      ], done);
+    }, done);
+  });
   beforeEach(done => {
     omni.pg((client, done) => {
       async.series([
