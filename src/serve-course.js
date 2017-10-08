@@ -22,7 +22,9 @@ const x_omni_sign = exports.x_omni_sign = 'X-Omnivore-Signed';
 const upload_id_regex = /\w{8}(-\w{4}){3}-\w{12}/;
 
 // create a web frontend for an Omnivore backend
-exports.createApp = function createApp(omni) {
+exports.createApp = function createApp(hosturl, omni) {
+  omnivore.types.assert(hosturl, 'string');
+  omnivore.types.assert(omni, omnivore.Omnivore);
   
   let log = logger.log.child({ in: 'server', course: omni.course });
   
@@ -89,7 +91,7 @@ exports.createApp = function createApp(omni) {
     let signed = req.header(x_omni_sign).split(' ');
     omni.parse(signed[0], signed[1], req.body, (err, parsed) => {
       if (err) {
-        log.warn(err, 'api parse error');
+        log.warn({ err }, 'api parse error');
         return res.status(403).end();
       }
       res.locals.authagent = signed[0];
@@ -123,7 +125,7 @@ exports.createApp = function createApp(omni) {
   app.all('*', (req, res, next) => {
     // authentication
     let authuser = res.locals.authuser = req.header(x_auth_user);
-    if ( ! authuser) { return next(`missing ${x_auth_user} header`); }
+    if ( ! authuser) { return next(new Error(`missing ${x_auth_user} header`)); }
     res.set(x_auth_user, authuser);
     omni.memo.allStaff((err, staff) => {
       if (err) { return next(err); }
@@ -393,9 +395,10 @@ if (require.main === module) {
   // we must be a child process
   assert(process.send, 'not a child process');
   
-  // we must have a valid course
-  let course = process.argv[2];
-  assert(omnivore.types.is(course, 'course'), 'invalid course');
+  // we must have a valid URL and course
+  let [ hosturl, course ] = process.argv.slice(2);
+  omnivore.types.assert(hosturl, 'string');
+  omnivore.types.assert(course, 'course');
   
   let log = logger.log.child({ in: 'serve-course', course });
   
@@ -410,7 +413,7 @@ if (require.main === module) {
     omni.cron(err => { if (err) { log.error({ err }, 'cron'); } });
   }, 1000 * 60 * 60);
   
-  let server = http.createServer(exports.createApp(omni));
+  let server = http.createServer(exports.createApp(hosturl, omni));
   server.timeout = 0;
   
   async.parallel([

@@ -85,7 +85,7 @@ function fork(course) {
     return fork.children[course];
   }
   log.info({ course }, 'forking');
-  let child = fork.children[course] = child_process.fork(path.join(__dirname, 'serve-course'), [ course ]);
+  let child = fork.children[course] = child_process.fork(path.join(__dirname, 'serve-course'), [ hosturl, course ]);
   child.on('message', msg => {
     if (msg.port) {
       child.omnivore_port = msg.port;
@@ -128,16 +128,15 @@ const ssl = {
 };
 const issuer = x509.parseCert('./config/ssl-ca.pem').fingerPrint;
 
+const hostname = x509.parseCert('./config/ssl-certificate.pem').subject.commonName;
 const port = config.env === 'production' ? 443 : 4443;
+const hosturl = `https://${hostname}${port === 443 ? '' : `:${port}`}`;
 
 const server = https.createServer(ssl, app);
 server.listen(port, () => log.info({ address: server.address() }, 'listening'));
 
 const redirect = express();
 
-redirect.get('*', (req, res) => {
-  if ( ! req.headers.host) { return res.status(400).end(); }
-  res.redirect('https://' + req.hostname + (port === 443 ? '' : ':' + port) + req.path);
-});
+redirect.get('*', (req, res) => res.redirect(hosturl + req.path));
 
 http.createServer(redirect).listen(config.env === 'production' ? 80 : 8080);

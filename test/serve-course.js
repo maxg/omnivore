@@ -22,7 +22,7 @@ describe('serve-course', function() {
   
   let course = 'TEST.APP/ia00';
   let omni = new omnivore.Omnivore(course);
-  let app = serve_course.createApp(omni);
+  let app = serve_course.createApp('http://localhost', omni);
   let server = http.createServer(app);
   let req;
   let now = new Date();
