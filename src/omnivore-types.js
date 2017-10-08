@@ -34,8 +34,8 @@ const course_regex = /^[A-Z0-9]+\.[A-Z0-9]+\/(fa|ia|sp|su)\d\d$/;
 const agent_regex = /^\w+$/;
 const username_regex = /^\w+$/;
 const key_path_regex = /^(\/|(\/[\w-]+)+)$/;
-const key_path_query_regex = /^(\/|(\!?[\w-]+%?(\|[\w-]+%?)*\*?|\*)?(\/(\!?[\w-]+%?(\|[\w-]+%?)*\*?|\*))*)$/;
-const key_ltree_query_regex = /^(\!?[\w]+%?(\|[\w]+%?)*\*?|\*\{\d\})?(\.(\!?[\w]+%?(\|[\w]+%?)*\*?|\*\{\d\}))*$/;
+const key_path_query_regex = /^(\/|\*\*|(\!?[\w-]+%?(\|[\w-]+%?)*\*?|\*)?(\/(\!?[\w-]+%?(\|[\w-]+%?)*\*?|\*))*(\/\*\*)?)$/;
+const key_ltree_query_regex = /^(\*|(\!?[\w]+%?(\|[\w]+%?)*\*?|\*\{\d\})?(\.(\!?[\w]+%?(\|[\w]+%?)*\*?|\*\{\d\}))*(\.\*)?)$/;
 const timestamp_regex = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{3})?(Z|\+0000)$/;
 
 xtype.ext.registerType({
@@ -88,11 +88,11 @@ const convertIn = exports.convertIn = function convertIn(val, type) {
     case 'key_path_query':
       assertType(val, 'key_path_query');
       return val ? val.replace(/-/g, '_')
-                      .replace(/(^|\/)\*/g, '/*{1}')
+                      .replace(/\*\*$/, '$')
+                      .replace(/(^|\/)\*((\/\*)*)/g, (_, i, r) => `${i}*{${r.length/2+1}}`)
+                      .replace('$', '*')
                       .replace(/^\//, '')
                       .replace(/\//g, '.')
-                      .replace(/\*\{1\}\.\*\{1\}\.\*\{1\}/g, '*{3}') // XXX
-                      .replace(/\*\{1\}\.\*\{1\}/g, '*{2}') // XXX
                  : val;
     case 'key_array':
       return val ? val.map(key => convertIn(key, 'key')) : val;
@@ -114,9 +114,8 @@ const convertOut = exports.convertOut = function convertOut(val, type) {
     case 'key_ltree_query':
       assertType(val, 'key_ltree_query');
       return val ? '/' + val.replace(/_/g, '-')
-                            .replace(/\*\{3\}/g, '*.*.*') // XXX
-                            .replace(/\*\{2}/g, '*.*') // XXX
-                            .replace(/\*\{1}/g, '*') // XXX
+                            .replace(/\*$/, '**')
+                            .replace(/\*\{(\d+)\}/g, (_, n) => `*${'/*'.repeat(n-1)}`)
                             .replace(/\./g, '/')
                  : val;
     case 'key_array':

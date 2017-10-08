@@ -42,6 +42,7 @@ describe('Omnivore', function() {
         [ '/a/b', true ],
         [ '/*/b', false ],
         [ '/a/*', false ],
+        [ '/a/**', false ],
         [ 'a/b', false ],
         [ '/a/!b', false ],
         [ '/a/b|c', false ],
@@ -51,13 +52,22 @@ describe('Omnivore', function() {
         [ '', true ],
         [ '/', true ],
         [ '/a', true ],
+        [ '/*', true ],
+        [ '/**', true ],
         [ '/a/', false ],
         [ '/a/b', true ],
         [ '/*/b', true ],
         [ '/a/*', true ],
+        [ '/**/b', false ],
+        [ '/a/**', true ],
+        [ 'a', true ],
+        [ '*', true ],
+        [ '**', true ],
         [ 'a/b', true ],
         [ '*/b', true ],
         [ 'a/*', true ],
+        [ '**/b', false ],
+        [ 'a/**', true ],
         [ 'a/!b', true ],
         [ 'a/b!', false ],
         [ 'a/b|c', true ],
@@ -70,11 +80,16 @@ describe('Omnivore', function() {
         [ '', true ],
         [ '.', false ],
         [ 'a', true ],
+        [ '*{1}', true ],
+        [ '*', true ],
         [ 'a.', false ],
         [ 'a.b', true ],
         [ '*.b', false ],
+        [ '*.*', false ],
         [ '*{1}.b', true ],
         [ 'b.*{1}', true ],
+        [ '*{2}', true ],
+        [ 'b.*', true ],
         [ 'a.!b', true ],
         [ 'a.b!', false ],
         [ 'a.b|c', true ],
@@ -94,6 +109,35 @@ describe('Omnivore', function() {
             } else {
               (function() { omnivore.types.assert(value, type); }).should.throw();
             }
+          });
+        });
+      });
+    });
+    
+    describe('#convertIn()/Out()', () => {
+      new Map([
+        [ 'key', [
+          [ '/**', '*' ],
+          [ '/a', 'a' ],
+          [ '/a/b', 'a.b' ],
+          [ '/*/b', '*{1}.b' ],
+          [ '/a/*/*', 'a.*{2}' ],
+          [ '/a/**', 'a.*' ],
+          [ '/a-b/c-d', 'a_b.c_d' ],
+        ] ],
+        [ 'row_array', [
+          [ [ { key: '/a/b' } ], [ { key: 'a.b' } ] ],
+        ] ],
+        [ 'value', [
+          [ 1, 1 ],
+        ] ]
+      ]).forEach((pairs, type) => {
+        describe(type, () => {
+          pairs.forEach(([ outside, inside ]) => {
+            it(`${util.inspect(outside)} <-> ${util.inspect(inside)}`, () => {
+              omnivore.types.convertIn(outside, type).should.eql(inside);
+              omnivore.types.convertOut(inside, type).should.eql(outside);
+            });
           });
         });
       });

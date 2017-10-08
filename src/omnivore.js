@@ -59,7 +59,7 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config) {
     (created, client, done, cb) => {
       this.once('ready', done);
       if (created) {
-        this._log.info({ course }, 'initializing')
+        this._log.info({ course }, 'initializing');
         return client.query(db_schema, cb);
       }
       cb();
