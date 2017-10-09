@@ -69,7 +69,7 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config) {
     this.emit('ready');
   });
   
-  this._memo('allStaff');
+  this._memo('agent', 'allStaff');
   if (this.config.debug_function_time) {
     this._time(
       '_add', '_multiadd',
@@ -600,6 +600,22 @@ Omnivore.prototype._prepare = function _prepare(fn) {
     return script.runInContext(context);
   };
 };
+
+Omnivore.prototype.agent = client(
+                           types.check([ pg.Client, 'agent' ], [ 'row' ],
+                           function _agent(client, agent, done) {
+  client.logQuery({
+    name: 'agent-select-agents',
+    text: 'SELECT * FROM agents WHERE agent = $1',
+    values: [ agent ],
+  }, (err, result) => {
+    if (err) { return done(err); }
+    if ( ! result.rows.length) { return done(new Error('unknown agent')); }
+    let row = result.rows[0];
+    row.write = row.write.map(query => types.convertOut(query, 'key'));
+    done(null, row);
+  });
+}));
 
 Omnivore.prototype.allStaff = client(
                               types.check([ pg.Client ], [ Set ],

@@ -730,6 +730,32 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('#agent()', () => {
+    
+    it('should return agent', done => {
+      omni.agent('tester', bail(done, result => {
+        result.should.read({
+          agent: 'tester',
+          public_key: /PUBLIC KEY/,
+          write: [ '/test/**' ],
+        });
+        done();
+      }));
+    });
+    
+    it('should memoize agent', done => {
+      async.series([
+        cb => omni.memo.agent('tester', cb),
+        cb => { sandbox.stub(omni, 'agent').throws(); cb(); },
+        cb => omni.memo.agent('tester', cb),
+      ], bail(done, results => {
+        results[0].should.read({ agent: 'tester' });
+        results[2].should.read({ agent: 'tester' });
+        done();
+      }));
+    });
+  });
+  
   describe('#allStaff()', () => {
     
     it('should return staff', done => {
