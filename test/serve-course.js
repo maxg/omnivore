@@ -607,6 +607,16 @@ describe('serve-course', function() {
       }));
     });
     
+    it('should record save time', done => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).post(save_url, bail(done, () => {
+        req.headers({ [x_auth_user]: 'staffer' }).get(save_url, bail(done, (res, body) => {
+          res.statusCode.should.eql(200);
+          body.should.match(/saved/);
+          done();
+        }));
+      }));
+    });
+    
     it('should fail with missing upload', done => {
       req.headers({ [x_auth_user]: 'staffer' }).post(save_url.replace(/.{8}$/, '00000000'), bail(done, res => {
         res.statusCode.should.eql(404);

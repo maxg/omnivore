@@ -262,17 +262,18 @@ exports.createApp = function createApp(hosturl, omni) {
   
   const pending_uploads = new Map();
   
-  function create_upload(username, data) {
+  function create_upload(username, data, prefix) {
     let upload_id = uuidv4();
-    let timeout = 1000 * 60 * 60 * 24; // 1 day
+    let timeout = 1000 * 60 * 60 * 24 * 2; // 2 days
     pending_uploads.set(upload_id, {
       username,
       created: new Date(),
       timeout: new Date(Date.now() + timeout),
       data,
+      path: prefix + upload_id,
     });
     setTimeout(() => pending_uploads.delete(upload_id), timeout);
-    return upload_id;
+    return prefix + upload_id;
   }
   
   function get_upload(req, res, next) {
@@ -282,20 +283,20 @@ exports.createApp = function createApp(hosturl, omni) {
   }
   
   app.post('/u/:username/:key(*).history', staffonly, body_parser.urlencoded({ extended: false }), (req, res, next) => {
-    let upload_id = create_upload(res.locals.authuser, {
+    let upload_path = create_upload(res.locals.authuser, {
       keys: [ req.params.key ],
       rows: [ {
         username: req.params.username,
         values: [ omnivore.csv.convert(req.body[req.params.key]) ],
       } ],
-    });
-    res.redirect(303, `/${omni.course}/upload/${upload_id}`);
+    }, `/${omni.course}/upload/`);
+    res.redirect(303, upload_path);
   });
   
   app.post('/upload.csv', staffonly, multer().single('grades'), (req, res, next) => {
     omnivore.csv.parse(req.file.buffer).once('parsed', (keys, rows) => {
-      let upload_id = create_upload(res.locals.authuser, { keys, rows });
-      res.redirect(303, `/${omni.course}/upload/${upload_id}`);
+      let upload_path = create_upload(res.locals.authuser, { keys, rows }, `/${omni.course}/upload/`);
+      res.redirect(303, upload_path);
     });
   });
   
@@ -325,6 +326,7 @@ exports.createApp = function createApp(hosturl, omni) {
     })))).filter(row => omnivore.types.is(row.value, 'value'));
     omni.multiadd(res.locals.authuser, rows, err => {
       if (err) { return next(err); }
+      res.locals.upload.saved = new Date();
       res.render('upload-saved', {
         valid: rows.length,
         invalid: data.keys.length * data.rows.length - rows.length,
@@ -341,10 +343,10 @@ exports.createApp = function createApp(hosturl, omni) {
   app.get('/roster', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
   
   app.post('/roster/', staffonly, body_parser.urlencoded({ extended: false }), (req, res, next) => {
-    let upload_id = create_upload(res.locals.authuser, {
+    let upload_path = create_upload(res.locals.authuser, {
       users: req.body.roster.split(/\r?\n/).map(username => username.trim().toLowerCase()).filter(username => username),
-    });
-    res.redirect(303, `/${omni.course}/roster/${upload_id}`);
+    }, `/${omni.course}/roster/`);
+    res.redirect(303, upload_path);
   });
   
   app.get('/roster/:upload_id', staffonly, get_upload, (req, res, next) => {
@@ -367,6 +369,7 @@ exports.createApp = function createApp(hosturl, omni) {
     let valid = res.locals.upload.data.users.filter(username => omnivore.types.is(username, 'username'));
     omni.setRoster(res.locals.authuser, valid, err => {
       if (err) { return next(err); }
+      res.locals.upload.saved = new Date();
       res.redirect(303, `/${omni.course}/users/`);
     });
   });
