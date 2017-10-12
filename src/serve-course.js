@@ -14,6 +14,7 @@ const response_time = require('response-time');
 const uuidv4 = require('uuid/v4');
 
 const logger = require('./logger');
+const notifier = require('./notifier');
 const omnivore = require('./omnivore');
 
 const x_auth_user = exports.x_auth_user = 'X-Authenticated-User';
@@ -27,6 +28,7 @@ exports.createApp = function createApp(hosturl, omni) {
   omnivore.types.assert(omni, omnivore.Omnivore);
   
   let log = logger.log.child({ in: 'server', course: omni.course });
+  let notify = new notifier.Notifier(hosturl, omni);
   
   let app = express();
   
@@ -327,6 +329,7 @@ exports.createApp = function createApp(hosturl, omni) {
     omni.multiadd(res.locals.authuser, rows, err => {
       if (err) { return next(err); }
       res.locals.upload.saved = new Date();
+      notify.added(res.locals.authuser, rows, res.locals.upload);
       res.render('upload-saved', {
         valid: rows.length,
         invalid: data.keys.length * data.rows.length - rows.length,
@@ -386,6 +389,7 @@ exports.createApp = function createApp(hosturl, omni) {
   
   app.use((err, req, res, next) => {
     log.error({ err }, 'app error');
+    notify.error(err, req, res);
     res.status(500).render('500', { err });
   });
   
