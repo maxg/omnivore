@@ -347,6 +347,16 @@ describe('Omnivore', function() {
       }));
     });
     
+    it('should return data concurrently', done => {
+      let step = () => { step = done };
+      let callback = bail(done, rows => {
+        rows.should.read([ { value: 100 } ]);
+        step();
+      });
+      omni.get({ username: 'alice', key: '/test/alpha' }, callback);
+      omni.get({ username: 'alice', key: '/test/alpha' }, callback);
+    });
+    
     context('computation', () => {
       
       it('should return computed for user + key', done => {
@@ -365,6 +375,18 @@ describe('Omnivore', function() {
             { username: 'bob', key: '/test/beta', ts: now, value: 40 },
           ]);
           done();
+        }));
+      });
+      
+      it('should return computed concurrently', done => {
+        omni.get({ username: 'alice', key: '/test/alpha' }, bail(done, () => {
+          let step = () => { step = done };
+          let callback = bail(done, rows => {
+            rows.should.read([ { value: 50 } ]);
+            step();
+          });
+          omni.get({ username: 'alice', key: '/test/beta' }, callback);
+          omni.get({ username: 'alice', key: '/test/beta' }, callback);
         }));
       });
     });

@@ -201,12 +201,12 @@ CREATE INDEX current_data_key_gist ON current_data USING gist(key);
 -- TODO test this trigger!
 CREATE OR REPLACE FUNCTION current_data_replace() RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM current_data WHERE username = NEW.username AND key = NEW.key;
     BEGIN
         INSERT INTO all_data SELECT NEW.*;
     EXCEPTION
         WHEN unique_violation THEN -- TODO is this the best way to handle re-inserting duplicate data?
     END;
+    DELETE FROM current_data WHERE username = NEW.username AND key = NEW.key;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -278,12 +278,12 @@ CREATE INDEX current_computed_key_gist ON current_computed USING gist(key);
 -- TODO test me
 CREATE OR REPLACE FUNCTION current_computed_replace() RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM current_computed WHERE username = NEW.username AND key = NEW.key;
     BEGIN
         INSERT INTO all_computed SELECT NEW.*;
     EXCEPTION
         WHEN unique_violation THEN -- TODO is this best way to handle re-inserting duplicate computed value?
     END;
+    DELETE FROM current_computed WHERE username = NEW.username AND key = NEW.key;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
