@@ -51,7 +51,7 @@ describe('notifier', function() {
             url: `http://localhost:${slacker.address().port}${slack_path}`,
             channel: slack_channel,
           };
-          client.query(`INSERT INTO agents VALUES ('slackbot', '${JSON.stringify(config)}', '{}');`, cb);
+          client.query(`INSERT INTO agents VALUES ('slackbot', '${JSON.stringify(config)}', '{}', '{}');`, cb);
         },
       ], done);
     }, done);

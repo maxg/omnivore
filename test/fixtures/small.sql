@@ -1,6 +1,6 @@
 INSERT INTO staff VALUES ('nanoquizzer');
 
-INSERT INTO agents VALUES ('nanoquizzer', '', ARRAY[ 'test.*{1}.nanoquiz' ]::LQUERY[]);
+INSERT INTO agents VALUES ('nanoquizzer', '', '{ "test.*{1}.nanoquiz" }', '{ "test.*{1}.nanoquiz" }');
 
 INSERT INTO visible_rules VALUES
     ('test.class_1.nanoquiz', CURRENT_TIMESTAMP - INTERVAL '3 day'),

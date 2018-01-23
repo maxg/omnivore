@@ -612,7 +612,9 @@ Omnivore.prototype.agent = client(
     if (err) { return done(err); }
     if ( ! result.rows.length) { return done(new Error('unknown agent')); }
     let row = result.rows[0];
-    row.write = row.write.map(query => types.convertOut(query, 'key'));
+    for (let perm of [ 'add', 'write' ]) {
+      row[perm] = row[perm].map(query => types.convertOut(query, 'key'));
+    }
     done(null, row);
   });
 }));

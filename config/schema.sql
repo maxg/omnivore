@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS staff (
 CREATE TABLE IF NOT EXISTS agents (
     agent wordtext NOT NULL PRIMARY KEY,
     public_key TEXT NOT NULL,
+    add LQUERY[] NOT NULL,
     write LQUERY[] NOT NULL
 );
 
@@ -143,6 +144,9 @@ CREATE OR REPLACE FUNCTION raw_data_ensure_foreign() RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO users (username) VALUES (NEW.username) ON CONFLICT DO NOTHING;
     IF NOT EXISTS (SELECT 1 FROM keys WHERE key = NEW.key) THEN
+        IF NOT NEW.key ? (SELECT add FROM agents WHERE agent = NEW.agent) THEN
+            RAISE EXCEPTION 'agent % cannot add new key %', NEW.agent, NEW.key;
+        END IF;
         LOCK TABLE keys IN SHARE ROW EXCLUSIVE MODE;
         INSERT INTO keys (key) SELECT NEW.key WHERE NOT EXISTS (SELECT 1 FROM keys WHERE key = NEW.key);
     END IF;

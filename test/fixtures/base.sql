@@ -27,4 +27,4 @@ INSERT INTO staff VALUES ('staffer');
 
 INSERT INTO agents VALUES ('tester', '-----BEGIN PUBLIC KEY-----
 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAKcrqJRD+MG2vmahVg3C///FWMMXZypIXiwMyutRfhyQ6UPTJdfUFKafUfQm5Nh5g54O+D2Xk/SJddLXHVKrXWkCAwEAAQ==
------END PUBLIC KEY-----', ARRAY[ 'test.*' ]::LQUERY[]);
+-----END PUBLIC KEY-----', '{ "test.*" }', '{ "test.*", "extra.*" }');

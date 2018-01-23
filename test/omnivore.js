@@ -759,7 +759,8 @@ describe('Omnivore', function() {
         result.should.read({
           agent: 'tester',
           public_key: /PUBLIC KEY/,
-          write: [ '/test/**' ],
+          add: [ '/test/**' ],
+          write: [ '/test/**', '/extra/**' ],
         });
         done();
       }));
