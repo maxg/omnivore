@@ -467,7 +467,7 @@ CREATE OR REPLACE RULE computations_on_delete_delete_stale_computed AS ON DELETE
     );
 
 CREATE OR REPLACE VIEW raw_grades AS
-    SELECT * FROM
+    SELECT username, key, active, visible, deadline, penalty_id, penalty_description, penalize, ts, value, agent, created FROM
     (
         SELECT *, ROW_NUMBER() OVER (
             PARTITION BY username, key
@@ -487,6 +487,7 @@ CREATE OR REPLACE VIEW grades AS
         COALESCE(data.ts, comp.ts) AS ts,
         COALESCE(data.value, comp.value) AS value,
         CASE WHEN data.value IS NOT NULL THEN data.penalty_applied ELSE comp.penalty_applied END AS penalty_applied,
+        agent,
         COALESCE(data.created, comp.created) AS created,
         CASE WHEN data.value IS NOT NULL THEN FALSE WHEN comp.value IS NOT NULL THEN TRUE ELSE NULL END AS computed
     FROM

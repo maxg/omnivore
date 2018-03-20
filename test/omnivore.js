@@ -357,6 +357,16 @@ describe('Omnivore', function() {
       omni.get({ username: 'alice', key: '/test/alpha' }, callback);
     });
     
+    it('should return same data after initial', done => {
+      async.series([
+        cb => omni.get({ username: 'alice', key: '/test/alpha' }, cb),
+        cb => omni.get({ username: 'alice', key: '/test/alpha' }, cb),
+      ], bail(done, results => {
+        results[0].should.eql(results[1]);
+        done();
+      }));
+    });
+    
     context('computation', () => {
       
       it('should return computed for user + key', done => {
@@ -387,6 +397,16 @@ describe('Omnivore', function() {
           });
           omni.get({ username: 'alice', key: '/test/beta' }, callback);
           omni.get({ username: 'alice', key: '/test/beta' }, callback);
+        }));
+      });
+      
+      it('should return same computed after initial', done => {
+        async.series([
+          cb => omni.get({ username: 'alice', key: '/test/beta' }, cb),
+          cb => omni.get({ username: 'alice', key: '/test/beta' }, cb),
+        ], bail(done, results => {
+          results[0].should.eql(results[1]);
+          done();
         }));
       });
     });
@@ -444,6 +464,16 @@ describe('Omnivore', function() {
           rows.should.read([
             { username: 'alice', key: '/test/gamma', ts: now, value: 55 },
           ]);
+          done();
+        }));
+      });
+      
+      it('should return same computed after initial', done => {
+        async.series([
+          cb => omni.get({ username: 'alice', key: '/test/gamma' }, cb),
+          cb => omni.get({ username: 'alice', key: '/test/gamma' }, cb),
+        ], bail(done, results => {
+          results[0].should.eql(results[1]);
           done();
         }));
       });

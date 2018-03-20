@@ -458,14 +458,10 @@ Omnivore.prototype._data = types.check([ pg.Client, 'row' ], [ 'row' ],
     (row, cb) => this._penalize(client, row, cb),
     (row, cb) => client.logQuery({
       name: 'data-insert-current_data',
-      text: 'INSERT INTO current_data (username, key, ts, value, penalty_applied, agent) VALUES ($1, $2, $3, $4, $5, $6)',
+      text: `INSERT INTO current_data (username, key, ts, value, penalty_applied, agent)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING created`,
       values: [ row.username, row.key, row.ts, JSON.stringify(row.value), row.penalty_applied, row.agent ],
-    }, cb),
-    (_, cb) => this._get(client, { username: row.username, key: row.key, hidden: true }, cb),
-    (rows, cb) => {
-      assert(rows.length == 1);
-      cb(null, Object.assign({}, row, rows[0]));
-    }
+    }, (err, result) => cb(err, Object.assign(row, result.rows[0], { computed: false }))),
   ], done);
 });
 
@@ -513,14 +509,10 @@ Omnivore.prototype._computed = types.check([ pg.Client, 'row' ], [ 'row' ],
     (row, cb) => this._penalize(client, row, cb),
     (row, cb) => client.logQuery({
       name: 'computed-insert-current_computed',
-      text: 'INSERT INTO current_computed (username, key, ts, value, penalty_applied) VALUES ($1, $2, $3, $4, $5)',
+      text: `INSERT INTO current_computed (username, key, ts, value, penalty_applied)
+             VALUES ($1, $2, $3, $4, $5) RETURNING created`,
       values: [ row.username, row.key, row.ts, JSON.stringify(row.value), row.penalty_applied ],
-    }, cb),
-    (_, cb) => this._get(client, { username: row.username, key: row.key, hidden: true }, cb),
-    (rows, cb) => {
-      assert(rows.length == 1);
-      cb(null, Object.assign({}, row, rows[0]));
-    },
+    }, (err, result) => cb(err, Object.assign(row, result.rows[0], { computed: true }))),
   ], done);
 });
 
