@@ -23,7 +23,13 @@ append content
       
       p Upload grades
       form(action='upload.csv' method='post' enctype='multipart/form-data')
-        p: span.btn.btn-default.btn-file
-          span.btn-file-label Select or drop CSV
-          input(name='grades', type='file', accept='.csv')
-        p: button.btn.btn-default.btn-upload(disabled) Upload
+        table
+          tbody
+            tr
+              td
+                p: span.btn.btn-default.btn-file
+                  span.btn-file-label Select or drop CSV
+                  input(name='grades', type='file', accept='.csv')
+                p: textarea.form-control.txt-upload(name='gradestext', placeholder='or paste CSV', rows=5)
+              td
+                p: button.btn.btn-default.btn-upload(disabled) Upload

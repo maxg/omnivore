@@ -14,3 +14,6 @@ $('input[type=file]').on('dragenter', function(event) {
 $('input[type=file]').on('dragleave drop', function(event) {
   $(this).parent().toggleClass('drag-drop-hover', false);
 });
+$('textarea.txt-upload').on('input', function() {
+  $(this).closest('form').find('.btn-upload').prop('disabled', false);
+});

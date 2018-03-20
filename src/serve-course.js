@@ -296,7 +296,8 @@ exports.createApp = function createApp(hosturl, omni) {
   });
   
   app.post('/upload.csv', staffonly, multer().single('grades'), (req, res, next) => {
-    omnivore.csv.parse(req.file.buffer).once('parsed', (keys, rows) => {
+    let input = req.file && req.file.buffer || req.body.gradestext;
+    omnivore.csv.parse(input).once('parsed', (keys, rows) => {
       let upload_path = create_upload(res.locals.authuser, { keys, rows }, `/${omni.course}/upload/`);
       res.redirect(303, upload_path);
     });

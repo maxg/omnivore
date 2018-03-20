@@ -98,6 +98,10 @@ body.staffpage nav.navbar {
   border-color: rgb(243, 255, 226);
 }
 
+textarea.form-control {
+  width: auto;
+}
+
 table {
   border-collapse: collapse;
   margin-bottom: 10px;

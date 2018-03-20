@@ -8,5 +8,5 @@ append content
   p Roster
   
   form(method='post')
-    p: textarea(name='roster', rows=20)= roster.join('\n')
+    p: textarea.form-control(name='roster', rows=20)= roster.join('\n')
     p: button.btn.btn-default Update
