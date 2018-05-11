@@ -2,8 +2,6 @@
 
 cd "$1"
 
-user=$2
-
 postgresql_version='9.6'
 
 # Apt Repositories
@@ -22,10 +20,8 @@ apt-get install -y nodejs build-essential
 # for pg package
 apt-get install -y libpq-dev
 
-# PostgreSQL
-apt-get install -y "postgresql-$postgresql_version" "postgresql-contrib-$postgresql_version"
-sudo -u postgres createuser $user -d
-sudo -u postgres psql -d template1 -c 'CREATE EXTENSION ltree;'
+# PostgreSQL client
+apt-get install -y postgresql-client
 
 # for GitHub downloads
 apt-get install -y unzip
@@ -42,21 +38,6 @@ pgweb_zip=pgweb_linux_amd64.zip
   unzip -o "$pgweb_zip" && rm "$pgweb_zip"
 )
 
-# pgBadger
-pgbadger_tag=$(
-  curl --silent --head https://github.com/dalibo/pgbadger/releases/latest |
-    grep '^Location: ' | grep -o '[^/]*$' | tr -d '\r'
-)
-pgbadger_zip="$pgbadger_tag.zip"
-(
-  cd pgbadger
-  curl -LO "https://github.com/dalibo/pgbadger/archive/$pgbadger_zip"
-  unzip -o "$pgbadger_zip" && rm "$pgbadger_zip"
-  cd pgbadger-${pgbadger_tag#v}
-  perl Makefile.PL
-  make
-)
-
 # SSL
 (
   cd config
@@ -68,5 +49,4 @@ pgbadger_zip="$pgbadger_tag.zip"
 )
 
 # Time zone
-cat > /etc/timezone <<< America/New_York
-dpkg-reconfigure -f noninteractive tzdata
+timedatectl set-timezone America/New_York

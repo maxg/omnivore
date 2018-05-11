@@ -6,6 +6,7 @@ const async = require('async');
 const sinon = require('sinon');
 const slack = require('@slack/client');
 
+const config = require('../config');
 const notifier = require('../src/notifier');
 const omnivore = require('../src/omnivore');
 
@@ -30,7 +31,7 @@ describe('notifier', function() {
   };
   
   let course = 'TEST.NOTIFY/ia00';
-  let omni = new omnivore.Omnivore(course);
+  let omni = new omnivore.Omnivore(course, config);
   let notify = new notifier.Notifier('http://localhost', omni);
   
   let ready = new Promise(resolve => omni.once('ready', resolve));

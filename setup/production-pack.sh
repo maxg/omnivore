@@ -15,7 +15,7 @@ chown -R $ADMIN:$ADMIN /var/$APP
 adduser --system $APP
 
 # App provisioning
-source setup/setup.sh /var/$APP $APP
+source setup/setup.sh /var/$APP
 
 # Set permissions on sensitive directories
 chown $APP:$ADMIN backup config log

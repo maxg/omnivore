@@ -8,13 +8,14 @@ const async = require('async');
 const should = require('should');
 const sinon = require('sinon');
 
+const config = require('../config');
 const omnivore = require('../src/omnivore');
 
 describe('Omnivore', function() {
   
   let sandbox = sinon.sandbox.create();
   
-  let omni = new omnivore.Omnivore('TEST.OMNIVORE/ia00');
+  let omni = new omnivore.Omnivore('TEST.OMNIVORE/ia00', config);
   let now = new Date();
   
   let ready = new Promise(resolve => omni.once('ready', resolve));

@@ -13,6 +13,7 @@ const multer = require('multer');
 const response_time = require('response-time');
 const uuidv4 = require('uuid/v4');
 
+const config = require('../config');
 const logger = require('./logger');
 const notifier = require('./notifier');
 const omnivore = require('./omnivore');
@@ -415,7 +416,7 @@ if (require.main === module) {
     process.exit(1);
   });
   
-  let omni = new omnivore.Omnivore(course);
+  let omni = new omnivore.Omnivore(course, config);
   
   setInterval(() => {
     omni.cron(err => { if (err) { log.error({ err }, 'cron'); } });
