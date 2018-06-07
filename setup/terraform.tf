@@ -1,7 +1,11 @@
 variable "app" { default = "omnivore" }
-variable "aws_access_key" {}
-variable "aws_secret_key" {}
-variable "aws_region" { default = "us-east-1" }
+variable "access_key" {}
+variable "secret_key" {}
+variable "region" {}
+
+terraform {
+  backend "s3" {}
+}
 
 locals {
   name = "${var.app}${terraform.workspace == "default" ? "" : "-${terraform.workspace}"}"
@@ -15,9 +19,9 @@ EOF
 }
 
 provider "aws" {
-  access_key = "${var.aws_access_key}"
-  secret_key = "${var.aws_secret_key}"
-  region = "${var.aws_region}"
+  access_key = "${var.access_key}"
+  secret_key = "${var.secret_key}"
+  region = "${var.region}"
 }
 
 data "aws_ami" "web" {
@@ -48,14 +52,14 @@ resource "aws_route" "internet_access" {
 resource "aws_subnet" "a" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "10.0.1.0/24"
-  availability_zone = "${var.aws_region}a"
+  availability_zone = "${var.region}a"
   tags { Name = "${local.name}-1" Terraform = "${local.name}" }
 }
 
 resource "aws_subnet" "b" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "10.0.2.0/24"
-  availability_zone = "${var.aws_region}b"
+  availability_zone = "${var.region}b"
   tags { Name = "${local.name}-2" Terraform = "${local.name}" }
 }
 

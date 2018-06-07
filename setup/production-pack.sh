@@ -37,3 +37,6 @@ npm install
 cat > /etc/apt/apt.conf.d/25auto-upgrades <<< 'APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";'
+
+# Rotate away logs from provisioning
+logrotate -f /etc/logrotate.conf 
