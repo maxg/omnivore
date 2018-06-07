@@ -752,6 +752,31 @@ Omnivore.prototype.deadline = client(transaction(
   }, done);
 })));
 
+Omnivore.prototype.keyRules = client(
+                              types.check([ pg.Client ], [ 'array' ],
+                              function _keyRules(client, done) {
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'keyRules-select',
+      text: `SELECT rules.*, penalty_description, matched FROM
+      (
+        SELECT COALESCE(a.keys, v.keys, d.keys) AS keys, a.after AS active, v.after AS visible, deadline, penalty_id FROM
+        active_rules a
+        FULL JOIN visible_rules v ON (a.keys::TEXT = v.keys::TEXT)
+        FULL JOIN deadline_rules d ON (a.keys::TEXT = d.keys::TEXT)
+      ) AS rules
+      NATURAL LEFT JOIN penalties
+      NATURAL LEFT JOIN LATERAL (SELECT ARRAY_AGG(key) AS matched FROM keys WHERE key ~ keys) AS matched
+      ORDER BY keys::TEXT`,
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+    (rows, cb) => cb(null, rows.map(row => Object.assign(row, {
+      keys: types.convertOut(row.keys, 'key_ltree_query'),
+      matched: row.matched ? types.convertOut(row.matched, 'key_array') : [],
+    }))),
+  ], done);
+}));
+
 // add a computation rule
 Omnivore.prototype.compute = client(transaction(
                           types.translate([ pg.Client, 'key', 'key', 'key_array', 'function' ], [ 'any' ],
@@ -763,6 +788,28 @@ Omnivore.prototype.compute = client(transaction(
     values: [ base, output, inputs, lambda ],
   }, done);
 })));
+
+Omnivore.prototype.computationRules = client(
+                                      types.check([ pg.Client ], [ 'array' ],
+                                      function _computationRules(client, done) {
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'computationRules-select',
+      text: `SELECT * FROM
+             computation_rules AS r
+             NATURAL LEFT JOIN LATERAL (SELECT ARRAY_AGG(output) AS computed FROM computations AS c
+                                        WHERE c.output ~ (r.base || '.' || r.output::TEXT)::LQUERY) AS computed
+             ORDER BY base::TEXT, output`,
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+    (rows, cb) => cb(null, rows.map(row => Object.assign(row, {
+      base: types.convertOut(row.base, 'key_ltree_query'),
+      output: types.convertOut(row.output, 'key'),
+      inputs: types.convertOut(row.inputs, 'key_array'),
+      computed: row.computed ? types.convertOut(row.computed, 'key_array') : [],
+    }))),
+  ], done);
+}));
 
 Omnivore.prototype.cron = client(
                           Omnivore.prototype._cron = function _cron(client, done) {

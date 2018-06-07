@@ -386,6 +386,22 @@ exports.createApp = function createApp(hosturl, omni) {
   });
   app.get('/users', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
   
+  app.get('/rules/', staffonly, (req, res, next) => {
+    omni.keyRules((err, rules) => {
+      if (err) { return next(err); }
+      res.render('rules-keys', { rules });
+    });
+  });
+  app.get('/rules', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
+  
+  app.get('/computations/', staffonly, (req, res, next) => {
+    omni.computationRules((err, computations) => {
+      if (err) { return next(err); }
+      res.render('rules-computations', { computations });
+    });
+  });
+  app.get('/computations', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
+  
   app.all('*', (req, res) => res.status(404).render('404'));
   
   app.use((err, req, res, next) => {

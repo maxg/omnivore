@@ -9,6 +9,7 @@
     dropdb --if-exists TEST.APP/ia00
     dropdb --if-exists TEST.NOTIFY/ia00
     dropdb --if-exists TEST.OMNIVORE/ia00
+    dropdb --if-exists TEST.PERFORMANCE/ia00
 )
 
 export NODE_ENV=test

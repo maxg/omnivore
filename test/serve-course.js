@@ -497,6 +497,8 @@ describe('serve-course', function() {
         done();
       }));
     });
+    
+    // TODO file vs. paste (gradestext) here and subsequent?
   });
   
   describe('GET /upload/:upload_id', () => {

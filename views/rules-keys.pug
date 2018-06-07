@@ -1,0 +1,27 @@
+extends layout
+
+append head
+  title Key Rules - #{course} - Omnivore
+
+append content
+  
+  p Key Rules
+  
+  table.sheet
+    thead
+      tr
+        th
+        th
+        th Active
+        th Visible
+        th Deadline
+        th
+    tbody
+      each row in rules
+        tr
+          td= row.matched.length
+          td.key: +key(row.keys)
+          td.ts: +ts(row.active)
+          td.ts: +ts(row.visible)
+          td.ts: +ts(row.deadline)
+          td.ts(title=row.penalty_description)= row.penalty_id

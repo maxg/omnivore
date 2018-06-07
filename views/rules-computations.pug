@@ -1,0 +1,25 @@
+extends layout
+
+append head
+  title Computation Rules - #{course} - Omnivore
+
+append content
+  
+  p Computation Rules
+  
+  table.sheet
+    thead
+      tr
+        th
+        th
+        th Output
+        th Inputs
+    tbody
+      each row in computations
+        tr
+          td= row.computed.length
+          td.key: +key(row.base)
+          td.key: +key(row.output)
+          td
+            each input in row.inputs
+              div: +key(input)
