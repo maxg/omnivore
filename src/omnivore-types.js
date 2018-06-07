@@ -7,15 +7,17 @@ const pg = require('pg');
 const xtype = require('xtypejs');
 xtype.ext.registerExtension(require('xtypejs-extension-custom-types'));
 
+const config = require('../config');
+
 // PostgreSQL type constants
 exports.pg = {
   BOOL: 16,
   TEXT: 25,
   TEXTarray: 1009,
-  LTREE: 16386, // XXX stable?
-  LTREEarray: 16389, // XXX stable?
-  LQUERY: 16440, // XXX stable?
-  LQUERYarray: 16443, // XXX stable?
+  LTREE: config.db_types.ltree,
+  LTREEarray: config.db_types.ltree_array,
+  LQUERY: config.db_types.lquery,
+  LQUERYarray: config.db_types.lquery_array,
 };
 // use built-in array parser for LTREE and LQUERY arrays
 pg.types.setTypeParser(exports.pg.LTREEarray, function parseLTREEarray(val) {

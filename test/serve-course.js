@@ -10,6 +10,7 @@ const request = require('request');
 const should = require('should');
 const sinon = require('sinon');
 
+const config = require('../config');
 const omnivore = require('../src/omnivore');
 const serve_course = require('../src/serve-course');
 
@@ -21,7 +22,7 @@ describe('serve-course', function() {
   let sandbox = sinon.sandbox.create();
   
   let course = 'TEST.APP/ia00';
-  let omni = new omnivore.Omnivore(course);
+  let omni = new omnivore.Omnivore(course, config);
   let app = serve_course.createApp('http://localhost', omni);
   let server = http.createServer(app);
   let req;

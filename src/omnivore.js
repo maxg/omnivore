@@ -38,12 +38,12 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config) {
     return this._log[ms < 50 ? 'debug' : ms < 250 ? 'info' : 'warn'].bind(this._log);
   };
   
-  this._connect = cb => pg.connect({ host: '/var/run/postgresql', database: course }, cb);
+  this._connect = cb => pg.connect(Object.assign({ database: course }, this.config.db), cb);
   
   this._functions = {};
   
   async.waterfall([
-    cb => pg.connect({ host: '/var/run/postgresql', database: 'postgres' }, cb),
+    cb => pg.connect(Object.assign({ database: 'postgres' }, this.config.db), cb),
     (client, done, cb) => {
       this.once('ready', done);
       client.query({

@@ -1,1 +1,3 @@
+.terraform
 packer.conf.json
+terraform.tfvars

@@ -1,5 +1,10 @@
 {
   "variables": {
+    "aws_access_key": "",
+    "aws_secret_key": "",
+    "aws_ubuntu_release": "",
+    "aws_instance_type": "",
+    
     "openstack_auth_url": "",
     "openstack_username": "",
     "openstack_password": "",
@@ -15,13 +20,31 @@
   },
   
   "builders": [ {
+    "type": "amazon-ebs",
+    "access_key": "{{user `aws_access_key`}}",
+    "secret_key": "{{user `aws_secret_key`}}",
+    "region": "us-east-1",
+    "ami_name": "{{user `app`}}-{{isotime \"0601021504\"}}-{{user `rev`}}",
+    "tags": {
+      "Name": "{{user `app`}} {{isotime \"0601021504\"}} {{user `rev`}}",
+      "Packer": "{{user `app`}}"
+    },
+    "source_ami_filter": {
+      "filters": {
+        "name": "ubuntu/images/hvm-ssd/ubuntu-*-{{user `aws_ubuntu_release`}}-amd64-server-*"
+      },
+      "owners": [ "099720109477" ], "most_recent": true
+    },
+    "instance_type": "{{user `aws_instance_type`}}",
+    "ssh_username": "ubuntu"
+  }, {
     "type": "openstack",
     "username": "{{user `openstack_username`}}",
     "password": "{{user `openstack_password`}}",
     "tenant_name": "{{user `openstack_tenant`}}",
     "identity_endpoint": "{{user `openstack_auth_url`}}",
     "region": "{{user `openstack_region`}}",
-    "image_name": "{{user `app`}}-{{timestamp}}-{{user `rev`}}",
+    "image_name": "{{user `app`}}-{{isotime \"0601021504\"}}-{{user `rev`}}",
     "source_image": "{{user `openstack_source_image`}}",
     "flavor": "{{user `openstack_flavor`}}",
     "security_groups": "{{user `openstack_secgroup`}}",
@@ -34,7 +57,7 @@
     "destination": "/tmp/{{user `app`}}.tar"
   }, {
     "type": "shell",
-    "script": "setup/provision.sh",
+    "script": "setup/production-pack.sh",
     "environment_vars": [ "APP={{user `app`}}" ],
     "execute_command": "{{.Vars}} ADMIN=`whoami` sudo -E sh -c {{.Path}}"
   } ]
