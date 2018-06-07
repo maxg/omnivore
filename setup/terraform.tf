@@ -107,7 +107,7 @@ resource "aws_db_instance" "default" {
   instance_class = "db.t2.micro"
   vpc_security_group_ids = ["${aws_security_group.db.id}"]
   db_subnet_group_name = "${aws_db_subnet_group.default.id}"
-  skip_final_snapshot = true # TODO !!! final_snapshot_identifier = "${local.name}-final"
+  final_snapshot_identifier = "${local.name}-final"
   username = "postgres"
   password = "${random_string.postgres_master_password.result}"
   tags { Terraform = "${local.name}" }
@@ -183,7 +183,12 @@ resource "aws_instance" "web" {
   provisioner "remote-exec" {
     inline = ["/var/${var.app}/setup/production-provision.sh"]
   }
-  # TODO grab the host SSH fingerprint
+}
+
+resource "aws_eip" "web" {
+  instance = "${aws_instance.web.id}"
+  vpc = true
+  tags { Name = "${local.name}" Terraform = "${local.name}" }
 }
 
 data "template_file" "postgres" {
@@ -196,4 +201,4 @@ data "template_file" "postgres" {
   }
 }
 
-output "web-address" { value = "${aws_instance.web.public_ip}" }
+output "web-address" { value = "${aws_eip.web.public_ip}" }

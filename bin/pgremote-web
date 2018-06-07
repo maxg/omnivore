@@ -4,6 +4,7 @@ db="${1:?Missing database}"
 
 source "$(dirname $0)/../config/postgres.vars"
 
+# Percent-encode database password
 pass="$(xxd -plain <<< "$PG_APP_PASSWORD" | tr -d '\n' | sed 's/../%&/g')"
 
 DATABASE_URL="postgres://omnivore:$pass@$PGHOST/$db" pgweb/pgweb_linux_amd64 --bind=localhost
