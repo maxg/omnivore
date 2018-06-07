@@ -13,8 +13,9 @@ oids=$(
   psql -d template1 -At -c "SELECT 'const '||typname||' = '||oid||', '||typname||'_array = '||typarray||';' FROM pg_type WHERE typname IN ('ltree', 'lquery')"
 )
 
-cat <<< "// $(date)
+cat <<< "// $PG_ID
 const host = '$PGHOST';
 const password = '$PG_APP_PASSWORD';
 $oids
+// ---
 $(cat env-production.js)" > env-production.js
