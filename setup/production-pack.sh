@@ -9,7 +9,6 @@ while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 2; done
 mkdir /var/$APP
 cd /var/$APP
 tar xf /tmp/$APP.tar
-chown -R $ADMIN:$ADMIN /var/$APP
 
 # Create daemon user
 adduser --system $APP
@@ -17,7 +16,8 @@ adduser --system $APP
 # App provisioning
 source setup/setup.sh /var/$APP
 
-# Set permissions on sensitive directories
+# Set permissions
+chown -R $ADMIN:$ADMIN /var/$APP
 chown $APP:$ADMIN backup config log
 chmod 770 backup config log
 
@@ -30,7 +30,6 @@ for port in 80 443; do
 done
 
 # Install Node.js packages
-# XXX do this as $APP user?
 npm install
 
 # Security updates
