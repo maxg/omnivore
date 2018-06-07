@@ -7,7 +7,16 @@ Omnivore
 Development
 -----------
 
-Install [Vagrant](https://www.vagrantup.com/).
+Install [VirtualBox](https://www.virtualbox.org/) and [Vagrant](https://www.vagrantup.com/).
+
+In the project root, `vagrant up` will configure a development VM.
+Use `vagrant ssh` to log in.
+
+In `/vagrant`...
+
+Run `bin/serve` to start the web server.
+
+Use `bin/test-{db,node}` to run the tests.
 
 
 Deployment
@@ -20,7 +29,7 @@ Install [Packer](https://www.packer.io/) and [Terraform](https://www.terraform.i
 Fill in `setup/packer.conf.json` following the example for `openstack` options.
 Run `bin/pack` to generate an image, *e.g.*: `bin/pack HEAD -only=openstack`
 
-Run `bin/openstack` TODO
+Then use `bin/openstack` to launch an instance.
 
 **On Amazon Web Services**
 
@@ -30,7 +39,9 @@ Run `bin/pack` to generate an AMI, *e.g.*: `bin/pack HEAD -only=amazon-ebs`
 Fill in `setup/terraform.tfvars` following the example.
 It provides variables for both backend (during `init`) and configuration.
 
-Create a SSH keypair in `~/.ssh/aws_omnivore[.pub]`
+Create a SSH keypair in: `~/.ssh/aws_omnivore{,.pub}`
+
+Obtain SSL certificates and save in: `setup/production/config/ssl-{certificate,intermediate-*,private-key}.pem`
 
 In `setup`...
 
