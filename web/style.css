@@ -149,10 +149,10 @@ a.csv::before { content: '[csv]'; }
 
 .raw[data-on]::before { content: '[input]'; }
 
-.comment .key,
-.comment .value { font-size: 15px; vertical-align: top; }
-.comment .key { text-align: right; }
-.comment .value { padding-left: 20px; padding-right: 0; }
+.detail .key,
+.detail .value { font-size: 15px; vertical-align: top; }
+.detail .key { text-align: right; }
+.detail .value { padding-left: 20px; padding-right: 0; }
 
 .value a { letter-spacing: -1px; }
 

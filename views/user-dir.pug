@@ -21,7 +21,7 @@ append content
       tbody
         each row, idx in children
           if row.key.endsWith('-comment') && idx > 0 && row.key.startsWith(children[idx-1].key)
-            tr.comment
+            tr.detail
               td.bullet(data-computed=row.computed)
               td.key: a(href=`/${course}/u/${username}${row.key}`) comment
               td.value: +value(row.value)
