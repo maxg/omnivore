@@ -380,6 +380,7 @@ CREATE TRIGGER computations_on_insert_ensure_key BEFORE INSERT ON computations
 
 CREATE OR REPLACE RULE keys_on_insert_delete_stale_computed AS ON INSERT TO keys
     WHERE NEW.active
+          OR EXISTS(SELECT 1 FROM active_rules WHERE NEW.key ~ keys AND after <= CURRENT_TIMESTAMP)
     DO DELETE FROM current_computed WHERE key IN (
         WITH RECURSIVE all_computations AS (
             SELECT * FROM computations WHERE NEW.key ? inputs
