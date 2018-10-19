@@ -103,8 +103,10 @@ resource "random_string" "postgres_app_password" {
 resource "aws_db_instance" "default" {
   identifier = "${local.name}"
   allocated_storage = 5
+  storage_type = "gp2"
   engine = "postgres"
   instance_class = "db.t2.micro"
+  backup_retention_period = 1
   vpc_security_group_ids = ["${aws_security_group.db.id}"]
   db_subnet_group_name = "${aws_db_subnet_group.default.id}"
   final_snapshot_identifier = "${local.name}-final"
