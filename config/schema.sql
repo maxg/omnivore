@@ -148,7 +148,10 @@ BEGIN
             RAISE EXCEPTION 'agent % cannot add new key %', NEW.agent, NEW.key;
         END IF;
         LOCK TABLE keys IN SHARE ROW EXCLUSIVE MODE;
-        INSERT INTO keys (key) SELECT NEW.key WHERE NOT EXISTS (SELECT 1 FROM keys WHERE key = NEW.key);
+        -- XXX avoids WHERE NOT EXISTS clause that doesn't work with keys_on_insert_delete_stale_computed
+        IF NOT EXISTS (SELECT 1 FROM keys WHERE key = NEW.key) THEN
+            INSERT INTO keys (key) SELECT NEW.key;
+        END IF;
     END IF;
     RETURN NEW;
 END;
@@ -253,6 +256,7 @@ CREATE TRIGGER all_computed_on_insert_ensure_foreign BEFORE INSERT ON all_comput
 
 CREATE OR REPLACE FUNCTION all_computed_ensure_key() RETURNS TRIGGER AS $$
 BEGIN
+    -- XXX WHERE NOT EXISTS clause doesn't work with keys_on_insert_delete_stale_computed!
     INSERT INTO keys (key) SELECT NEW.key WHERE NOT EXISTS (SELECT 1 FROM keys WHERE key = NEW.key);
     RETURN NEW;
 END;
@@ -371,6 +375,7 @@ CREATE TRIGGER computations_on_insert_ignore_duplicate BEFORE INSERT ON computat
 
 CREATE OR REPLACE FUNCTION computations_ensure_key() RETURNS TRIGGER AS $$
 BEGIN
+    -- XXX WHERE NOT EXISTS clause doesn't work with keys_on_insert_delete_stale_computed!
     INSERT INTO keys (key) SELECT NEW.output WHERE NOT EXISTS (SELECT 1 FROM keys WHERE key = NEW.output);
     RETURN NEW;
 END;

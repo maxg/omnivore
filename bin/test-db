@@ -15,7 +15,7 @@ createdb T.001/ia00
 $psql -f config/schema.sql
 $psql -f test/fixtures/base.sql
 
-tests=(test/db/*.sql)
+tests=(test/db/${@:-*}.sql)
 {
     echo 1..${#tests[@]}
     for test in ${tests[@]}; do
