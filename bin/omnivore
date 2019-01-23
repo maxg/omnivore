@@ -1,0 +1,11 @@
+#!/bin/bash
+
+#
+# Run in production.
+#
+
+set -e
+
+cd "$(dirname "${BASH_SOURCE[0]}")"/..
+
+NODE_ENV=production authbind bin/serve

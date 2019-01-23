@@ -22,5 +22,8 @@ $oids
 // ---
 $(cat env-production.js)" > env-production.js
 
+# Start daemon
+sudo systemctl start omnivore
+
 # Output SSH host key fingerprints
 grep --only-matching 'ec2:.*' /var/log/syslog

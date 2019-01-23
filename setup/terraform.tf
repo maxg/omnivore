@@ -168,6 +168,7 @@ resource "aws_instance" "web" {
   root_block_device {
     delete_on_termination = false
   }
+  user_data = "${data.template_cloudinit_config.config_web.rendered}"
   tags { Name = "${local.name}" Terraform = "${local.name}" }
   volume_tags { Name = "${local.name}" }
   connection {
@@ -191,6 +192,16 @@ resource "aws_eip" "web" {
   instance = "${aws_instance.web.id}"
   vpc = true
   tags { Name = "${local.name}" Terraform = "${local.name}" }
+}
+
+data "template_cloudinit_config" "config_web" {
+  part {
+    content_type = "text/cloud-config"
+    content = <<EOF
+runcmd:
+- systemctl enable ${var.app}
+EOF
+  }
 }
 
 data "template_file" "postgres" {

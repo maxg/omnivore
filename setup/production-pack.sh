@@ -32,6 +32,19 @@ done
 # Install Node.js packages
 npm install
 
+# Daemon
+cat > /lib/systemd/system/$APP.service <<EOD
+[Unit]
+After=network.target
+
+[Service]
+User=$APP
+ExecStart=/var/$APP/bin/$APP
+
+[Install]
+WantedBy=multi-user.target
+EOD
+
 # Security updates
 cat > /etc/apt/apt.conf.d/25auto-upgrades <<< 'APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
