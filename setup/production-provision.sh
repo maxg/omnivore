@@ -1,5 +1,11 @@
 #!/bin/bash
 
+set -x
+
+# Wait for instance configuration to finish
+while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 2; done
+sleep 1
+
 cd "$(dirname $0)/../config"
 
 source postgres.vars
