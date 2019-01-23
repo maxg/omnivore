@@ -24,9 +24,10 @@ const signature_encoding = exports.signature_encoding = 'base64';
 
 // create a new Omnivore
 //   instance emits 'ready' event when usable
-const Omnivore = exports.Omnivore = function Omnivore(course, config) {
+const Omnivore = exports.Omnivore = function Omnivore(course, config, create) {
   types.assert(course, 'course');
   types.assert(config, 'object|undefined');
+  types.assert(create, 'boolean|undefined');
   
   events.EventEmitter.call(this);
   
@@ -53,6 +54,7 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config) {
     },
     (client, result, cb) => {
       if (result.rows.length) { return cb(null, false); }
+      if ( ! create) { return cb(new Error(`no course ${course}`)); }
       client.query('CREATE DATABASE "' + course + '"', cb);
     },
     (created, cb) => this._connect((err, client, done) => cb(err, created, client, done)),

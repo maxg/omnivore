@@ -31,7 +31,7 @@ describe('notifier', function() {
   };
   
   let course = 'TEST.NOTIFY/ia00';
-  let omni = new omnivore.Omnivore(course, config);
+  let omni = new omnivore.Omnivore(course, config, true);
   let notify = new notifier.Notifier('http://localhost', omni);
   
   let ready = new Promise(resolve => omni.once('ready', resolve));

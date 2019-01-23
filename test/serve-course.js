@@ -22,7 +22,7 @@ describe('serve-course', function() {
   let sandbox = sinon.sandbox.create();
   
   let course = 'TEST.APP/ia00';
-  let omni = new omnivore.Omnivore(course, config);
+  let omni = new omnivore.Omnivore(course, config, true);
   let app = serve_course.createApp('http://localhost', omni);
   let server = http.createServer(app);
   let req;

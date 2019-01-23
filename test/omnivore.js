@@ -15,7 +15,7 @@ describe('Omnivore', function() {
   
   let sandbox = sinon.sandbox.create();
   
-  let omni = new omnivore.Omnivore('TEST.OMNIVORE/ia00', config);
+  let omni = new omnivore.Omnivore('TEST.OMNIVORE/ia00', config, true);
   let now = new Date();
   
   let ready = new Promise(resolve => omni.once('ready', resolve));

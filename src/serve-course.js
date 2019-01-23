@@ -405,9 +405,10 @@ if (require.main === module) {
   assert(process.send, 'not a child process');
   
   // we must have a valid URL and course
-  let [ hosturl, course ] = process.argv.slice(2);
+  let [ hosturl, course, create ] = process.argv.slice(2);
   omnivore.types.assert(hosturl, 'string');
   omnivore.types.assert(course, 'course');
+  omnivore.types.assert(create, 'string');
   
   let log = logger.log.child({ in: 'serve-course', course });
   
@@ -416,7 +417,7 @@ if (require.main === module) {
     process.exit(1);
   });
   
-  let omni = new omnivore.Omnivore(course, config);
+  let omni = new omnivore.Omnivore(course, config, create === 'true');
   
   setInterval(() => {
     omni.cron(err => { if (err) { log.error({ err }, 'cron'); } });

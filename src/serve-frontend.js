@@ -71,7 +71,7 @@ function course(req, res, next) {
     return res.redirect(301, req.originalUrl + '/');
   }
   
-  let child = fork(res.locals.course);
+  let child = fork(res.locals.course, !! req.query.create);
   if ( ! child.omnivore_port) {
     child.once('omnivore_error', err => next(err));
     child.once('omnivore_port', () => handle(child.omnivore_port, req, res, next));
@@ -80,12 +80,12 @@ function course(req, res, next) {
   }
 }
 
-function fork(course) {
+function fork(course, create) {
   if (fork.children[course]) {
     return fork.children[course];
   }
   log.info({ course }, 'forking');
-  let child = fork.children[course] = child_process.fork(path.join(__dirname, 'serve-course'), [ hosturl, course ]);
+  let child = fork.children[course] = child_process.fork(path.join(__dirname, 'serve-course'), [ hosturl, course, create ]);
   child.on('message', msg => {
     if (msg.port) {
       child.omnivore_port = msg.port;
