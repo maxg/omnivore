@@ -1131,6 +1131,20 @@ describe('Omnivore', function() {
       }));
     });
     
+    it('should add compute rule with empty base', done => {
+      async.series([
+        cb => omni.compute('/', 'test/rules/a', [ 'test/rules/c/*' ], d => 'go ' + d, cb),
+        cb => omni.add('tester', 'alice', '/test/rules/c/d', now, 'bob', cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[2].should.read([
+          { key: '/test/rules/a', value: 'go bob' },
+          { key: '/test/rules/c/d', value: 'bob' },
+        ]);
+        done();
+      }));
+    });
+    
     it('should add compute rule with negation', done => {
       async.series([
         cb => omni.compute('/test/!x', 'a', [ '!y/d' ], d => JSON.stringify(d), cb),

@@ -307,7 +307,7 @@ CREATE OR REPLACE RULE raw_data_on_delete_delete_overridden_computed AS ON DELET
     DO DELETE FROM current_computed WHERE key = OLD.key AND username = OLD.username;
 
 CREATE TABLE IF NOT EXISTS computation_rules (
-    base LQUERY NOT NULL,
+    base LQUERY,
     output LTREE NOT NULL,
     inputs LQUERY[] NOT NULL,
     compute TEXT NOT NULL
@@ -321,14 +321,14 @@ CREATE TABLE IF NOT EXISTS computations (
 
 CREATE OR REPLACE FUNCTION computation_rules_new_key() RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO computations SELECT prefix || output, array_agg(prefix::TEXT || '.' || input ORDER BY ordinality)::LQUERY[], compute FROM
+    INSERT INTO computations SELECT prefix || output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], compute FROM
     (
         SELECT prefix, output, input, ordinality, compute FROM
         (
             SELECT subpath(NEW.key,0,split) AS prefix, subpath(NEW.key,split) AS suffix
-            FROM generate_series(1,nlevel(NEW.key)-1) AS split
+            FROM generate_series(0,nlevel(NEW.key)-1) AS split
         ) AS splits
-        JOIN computation_rules ON (prefix ~ base AND suffix ? inputs),
+        JOIN computation_rules ON (CASE WHEN base IS NULL THEN prefix = '' ELSE prefix ~ base END AND suffix ? inputs),
         LATERAL unnest(inputs) WITH ORDINALITY AS input
     ) AS comp
     WHERE NOT EXISTS (SELECT 1 FROM computations WHERE output = prefix || comp.output)
@@ -341,16 +341,16 @@ CREATE TRIGGER keys_on_insert_insert_computations AFTER INSERT ON keys
 
 CREATE OR REPLACE FUNCTION computation_rules_new_rule() RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO computations SELECT prefix || NEW.output, array_agg(prefix::TEXT || '.' || input ORDER BY ordinality)::LQUERY[], NEW.compute FROM
+    INSERT INTO computations SELECT prefix || NEW.output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], NEW.compute FROM
     (
         SELECT DISTINCT subpath(key,0,split)::TEXT AS prefix, input, ordinality FROM
         (
-            SELECT key, generate_series(1,nlevel(key)-1) AS split FROM
+            SELECT key, generate_series(0,nlevel(key)-1) AS split FROM
             keys
-            WHERE key ~ ANY (SELECT (NEW.base || '.' || unnest(NEW.inputs))::LQUERY)
+            WHERE key ~ ANY (SELECT (coalesce(NEW.base || '.', '') || unnest(NEW.inputs))::LQUERY)
         ) AS splits,
         LATERAL unnest(NEW.inputs::TEXT[]) WITH ORDINALITY AS input
-        WHERE subpath(key,0,split) ~ NEW.base AND subpath(key,split) ? NEW.inputs
+        WHERE CASE WHEN NEW.base IS NULL THEN split = 0 ELSE subpath(key,0,split) ~ NEW.base END AND subpath(key,split) ? NEW.inputs
     ) AS comp
     GROUP BY prefix;
     RETURN NULL;

@@ -762,7 +762,7 @@ Omnivore.prototype.compute = client(transaction(
   client.logQuery({
     name: 'compute-insert-computation_rules',
     text: 'INSERT INTO computation_rules (base, output, inputs, compute) VALUES ($1, $2, $3, $4)',
-    values: [ base, output, inputs, lambda ],
+    values: [ base === '' ? null : base, output, inputs, lambda ],
   }, done);
 })));
 
