@@ -9,7 +9,6 @@ const path = require('path');
 const express = require('express');
 const http_proxy = require('http-proxy');
 const favicon = require('serve-favicon');
-const x509 = require('x509');
 
 const config = require('../config');
 const logger = require('./logger');
@@ -59,10 +58,10 @@ function authenticate(req, res, next) {
     return res.status(401).render('401', { error: req.connection.authorizationError, cert });
   }
   // reject client certs not issued by the correct CA
-  if (cert.issuerCertificate.fingerprint !== issuer) {
+  if (cert.issuerCertificate.fingerprint !== ssl_ca_info.fingerprint) {
     return res.status(401).render('401', { error: 'unexpected issuer', cert });
   }
-  res.set(serve_course.x_auth_user, cert.subject.emailAddress.replace('@' + config.cert_domain, ''));
+  res.set(serve_course.x_auth_user, cert.subject.emailAddress.replace('@' + ssl_ca_info.domain, ''));
   next();
 }
 
@@ -124,13 +123,13 @@ const ssl = {
   ca: fs.readdirSync('./config')
         .filter(f => /ssl-ca|ssl-intermediate/.test(f))
         .map(f => fs.readFileSync('./config/' + f)),
-  requestCert: true
+  requestCert: true,
+  rejectUnauthorized: false,
 };
-const issuer = x509.parseCert('./config/ssl-ca.pem').fingerPrint;
+const ssl_ca_info = JSON.parse(fs.readFileSync('./config/ssl-ca-info.json', { encoding: 'utf-8' }));
 
-const hostname = x509.parseCert('./config/ssl-certificate.pem').subject.commonName;
 const port = config.env === 'production' ? 443 : 4443;
-const hosturl = `https://${hostname}${port === 443 ? '' : `:${port}`}`;
+const hosturl = `https://${config.hostname}${port === 443 ? '' : `:${port}`}`;
 
 const server = https.createServer(ssl, app);
 server.listen(port, () => log.info({ address: server.address() }, 'listening'));

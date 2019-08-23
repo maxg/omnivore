@@ -1,10 +1,8 @@
 #!/bin/bash
 
-#
-# Use Packer to generate a virtual machine image.
-#
-
 set -e
+
+cd "$(dirname "${BASH_SOURCE[0]}")"/..
 
 revision=$1
 

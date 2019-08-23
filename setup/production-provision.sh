@@ -20,8 +20,13 @@ oids=$(
   psql -d template1 -At -c "SELECT 'const '||typname||' = '||oid||', '||typname||'_array = '||typarray||';' FROM pg_type WHERE typname IN ('ltree', 'lquery')"
 )
 
-# Add database info to app configuration
-cat <<< "// $PG_ID
+hostname=$(
+  openssl x509 -noout -subject -nameopt multiline < ssl-certificate.pem | fgrep commonName | cut -d= -f2 | sed 's/ //g'
+)
+
+# Add info to app configuration
+cat <<< "const hostname = '$hostname';
+// $PG_ID
 const host = '$PGHOST';
 const password = '$PG_APP_PASSWORD';
 $oids
@@ -32,4 +37,4 @@ $(cat env-production.js)" > env-production.js
 sudo systemctl start omnivore
 
 # Output SSH host key fingerprints
-grep --only-matching 'ec2:.*' /var/log/syslog
+grep --text --only-matching 'ec2:.*' /var/log/syslog

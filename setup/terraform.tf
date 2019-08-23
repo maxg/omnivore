@@ -105,7 +105,8 @@ resource "aws_db_instance" "default" {
   allocated_storage = 5
   storage_type = "gp2"
   engine = "postgres"
-  instance_class = "db.t2.micro"
+  engine_version = "11"
+  instance_class = "db.t3.micro"
   backup_retention_period = 1
   vpc_security_group_ids = ["${aws_security_group.db.id}"]
   db_subnet_group_name = "${aws_db_subnet_group.default.id}"
@@ -159,7 +160,7 @@ resource "aws_key_pair" "app" {
 }
 
 resource "aws_instance" "web" {
-  instance_type = "t2.micro"
+  instance_type = "t3.micro"
   ami = "${data.aws_ami.web.id}"
   vpc_security_group_ids = ["${aws_security_group.web.id}"]
   subnet_id = "${aws_subnet.a.id}"
