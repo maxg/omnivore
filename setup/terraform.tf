@@ -189,14 +189,20 @@ resource "aws_instance" "web" {
     inline = ["/var/${local.app}/setup/production-provision.sh ${local.app} ${local.name}"]
   }
   lifecycle {
+    create_before_destroy = true
     ignore_changes = [tags]
   }
 }
 
 resource "aws_eip" "web" {
-  instance = aws_instance.web.id
   vpc = true
   tags = { Name = local.name, Terraform = local.name }
+}
+
+resource "aws_eip_association" "web_address" {
+  instance_id = aws_instance.web.id
+  allocation_id = aws_eip.web.id
+  lifecycle { create_before_destroy = true }
 }
 
 data "template_cloudinit_config" "config_web" {
@@ -276,4 +282,4 @@ resource "aws_iam_instance_profile" "web" {
   depends_on = [aws_iam_role_policy.web]
 }
 
-output "web-address" { value = aws_eip.web.public_ip }
+output "web-address" { value = aws_eip_association.web_address.public_ip }
