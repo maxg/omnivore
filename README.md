@@ -14,6 +14,8 @@ Use `vagrant ssh` to log in.
 
 In `/vagrant`...
 
+Fill in `config/env-development.js` following the example.
+
 Run `bin/serve` to start the web server.
 
 Use `bin/test-{db,node}` to run the tests.

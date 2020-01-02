@@ -2,6 +2,9 @@
 
 set -x
 
+APP=$1
+NAME=$2
+
 # Wait for instance configuration to finish
 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 2; done
 sleep 1
@@ -34,7 +37,7 @@ $oids
 $(cat env-production.js)" > env-production.js
 
 # Start daemon
-sudo systemctl start omnivore
+sudo systemctl start $APP
 
 # Output SSH host key fingerprints
 grep --text --only-matching 'ec2:.*' /var/log/syslog

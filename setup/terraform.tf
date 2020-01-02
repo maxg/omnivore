@@ -4,6 +4,11 @@ variable "region" {}
 variable "access_key" {}
 variable "secret_key" {}
 
+variable "oidc_host" {}
+variable "oidc_id" {}
+variable "oidc_secret" {}
+variable "oidc_email_domain" {}
+
 # terraform init -backend-config=terraform.tfvars
 terraform {
   required_version = ">= 0.12"
@@ -179,12 +184,8 @@ resource "aws_instance" "web" {
     source = "production/"
     destination = "/var/${local.app}"
   }
-  provisioner "file" {
-    content = data.template_file.postgres.rendered
-    destination = "/var/${local.app}/config/postgres.vars"
-  }
   provisioner "remote-exec" {
-    inline = ["/var/${local.app}/setup/production-provision.sh"]
+    inline = ["/var/${local.app}/setup/production-provision.sh ${local.app} ${local.name}"]
   }
 }
 
@@ -198,10 +199,22 @@ data "template_cloudinit_config" "config_web" {
   part {
     content_type = "text/cloud-config"
     content = <<EOF
+write_files:
+- encoding: b64
+  content: ${base64encode(data.template_file.postgres.rendered)}
+  path: /var/${local.app}/config/postgres.vars
+- encoding: b64
+  content: ${base64encode(data.template_file.env_production.rendered)}
+  path: /var/${local.app}/config/env-production.js
+  owner: ubuntu
 runcmd:
 - systemctl enable ${local.app}
 EOF
   }
+}
+
+resource "random_string" "web_secret" {
+  length = 32
 }
 
 data "template_file" "postgres" {
@@ -211,6 +224,17 @@ data "template_file" "postgres" {
     host = aws_db_instance.default.address
     master_password = random_string.postgres_master_password.result
     app_password = random_string.postgres_app_password.result
+  }
+}
+
+data "template_file" "env_production" {
+  template = file("../config/env-production-template.js")
+  vars = {
+    oidc_host = var.oidc_host
+    oidc_id = var.oidc_id
+    oidc_secret = var.oidc_secret
+    oidc_email_domain = var.oidc_email_domain
+    web_secret = random_string.web_secret.result
   }
 }
 

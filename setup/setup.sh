@@ -43,12 +43,6 @@ pgweb_zip=pgweb_linux_amd64.zip
 # SSL
 (
   cd config
-  # Fetch CA certificate
-  [ -f ssl-ca.pem ] || wget -q -O - http://ca.mit.edu/mitClient.crt | openssl x509 -inform der -out ssl-ca.pem
-  [ -f ssl-ca-info.json ] || node -p "JSON.stringify({
-      domain:      'MIT.EDU',
-      fingerprint: '`openssl x509 -noout -fingerprint < ssl-ca.pem | cut -d= -f2`',
-    })" > ssl-ca-info.json
   # Generate self-signed certificate
   [ -f ssl-private-key.pem ] || openssl genrsa 2048 > ssl-private-key.pem
   [ -f ssl-certificate.pem ] || openssl req -new -key ssl-private-key.pem -config ../setup/openssl.conf | openssl x509 -req -signkey ssl-private-key.pem -out ssl-certificate.pem
