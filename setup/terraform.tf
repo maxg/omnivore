@@ -171,6 +171,7 @@ resource "aws_instance" "web" {
   root_block_device {
     delete_on_termination = false
   }
+  iam_instance_profile = aws_iam_instance_profile.web.name
   user_data = data.template_cloudinit_config.config_web.rendered
   tags = { Name = local.name, Terraform = local.name }
   volume_tags = { Name = local.name }
@@ -186,6 +187,9 @@ resource "aws_instance" "web" {
   }
   provisioner "remote-exec" {
     inline = ["/var/${local.app}/setup/production-provision.sh ${local.app} ${local.name}"]
+  }
+  lifecycle {
+    ignore_changes = [tags]
   }
 }
 
@@ -236,6 +240,40 @@ data "template_file" "env_production" {
     oidc_email_domain = var.oidc_email_domain
     web_secret = random_string.web_secret.result
   }
+}
+
+data "aws_iam_policy_document" "assume_role_ec2" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "web" {
+  name = "${local.name}-web-role"
+  assume_role_policy = data.aws_iam_policy_document.assume_role_ec2.json
+}
+
+data "aws_iam_policy_document" "web_access" {
+  statement {
+    actions = ["ec2:CreateTags"]
+    resources = ["arn:aws:ec2:${var.region}:*:instance/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "web" {
+  name = "${local.name}-web-access"
+  role = aws_iam_role.web.id
+  policy = data.aws_iam_policy_document.web_access.json
+}
+
+resource "aws_iam_instance_profile" "web" {
+  name = "${local.name}-web-profile"
+  role = aws_iam_role.web.name
+  depends_on = [aws_iam_role_policy.web]
 }
 
 output "web-address" { value = aws_eip.web.public_ip }

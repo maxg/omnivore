@@ -9,6 +9,14 @@ NAME=$2
 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 2; done
 sleep 1
 
+# Output and tag SSH host key fingerprints
+identity=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document)
+export AWS_DEFAULT_REGION=$(jq -r .region <<< $identity)
+grep --only-matching 'ec2: .*' /var/log/syslog | sed -n '/BEGIN SSH/,/END/p' | tee /dev/fd/2 |
+grep --only-matching '.\+ .\+:.\+ .\+ (.\+)' |
+while read _ _ hash _ type; do echo "Key=SSH $type,Value=$hash"; done |
+xargs -d "\n" aws ec2 create-tags --resources $(jq -r .instanceId <<< $identity) --tags
+
 cd "$(dirname $0)/../config"
 
 source postgres.vars
@@ -38,6 +46,3 @@ $(cat env-production.js)" > env-production.js
 
 # Start daemon
 sudo systemctl start $APP
-
-# Output SSH host key fingerprints
-grep --text --only-matching 'ec2:.*' /var/log/syslog

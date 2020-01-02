@@ -40,6 +40,10 @@ pgweb_zip=pgweb_linux_amd64.zip
   unzip -o "$pgweb_zip" && rm "$pgweb_zip"
 )
 
+# AWS CLI
+apt-get install -y python-pip jq
+pip install awscli --upgrade
+
 # SSL
 (
   cd config
