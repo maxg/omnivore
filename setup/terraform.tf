@@ -239,6 +239,7 @@ data "template_file" "env_production" {
 }
 
 resource "null_resource" "web_provision" {
+  triggers = { web = aws_instance.web.id }
   connection {
     type = "ssh"
     host = aws_eip_association.web_address.public_ip
