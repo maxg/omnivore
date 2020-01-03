@@ -4,6 +4,8 @@ set -x
 
 APP=$1
 NAME=$2
+HOST=$3
+CONTACT=$4
 
 # Wait for instance configuration to finish
 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 2; done
@@ -31,18 +33,28 @@ oids=$(
   psql -d template1 -At -c "SELECT 'const '||typname||' = '||oid||', '||typname||'_array = '||typarray||';' FROM pg_type WHERE typname IN ('ltree', 'lquery')"
 )
 
-hostname=$(
-  openssl x509 -noout -subject -nameopt multiline < ssl-certificate.pem | fgrep commonName | cut -d= -f2 | sed 's/ //g'
-)
-
-# Add info to app configuration
-cat <<< "const hostname = '$hostname';
-// $PG_ID
+# Add database info to app configuration
+cat <<< "// $PG_ID
 const host = '$PGHOST';
 const password = '$PG_APP_PASSWORD';
 $oids
 // ---
 $(cat env-production.js)" > env-production.js
+
+# Start Certbot
+sudo certbot certonly --standalone --non-interactive --agree-tos --email $CONTACT --domains $HOST
+(
+  cd /etc/letsencrypt
+  sudo tee renewal-hooks/post/permit <<EOD
+cd /etc/letsencrypt
+chmod o+x archive live
+chown -R $APP archive/$HOST
+EOD
+  sudo chmod +x renewal-hooks/post/permit
+  sudo renewal-hooks/post/permit
+)
+sudo systemctl --now enable certbot.timer
+ln -s /etc/letsencrypt/live/$HOST /var/$APP/config/tls
 
 # Start daemon
 sudo systemctl start $APP

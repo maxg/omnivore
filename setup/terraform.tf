@@ -4,6 +4,8 @@ variable "region" {}
 variable "access_key" {}
 variable "secret_key" {}
 
+variable "web_host" {}
+variable "le_contact" {}
 variable "oidc_host" {}
 variable "oidc_id" {}
 variable "oidc_secret" {}
@@ -175,19 +177,6 @@ resource "aws_instance" "web" {
   user_data = data.template_cloudinit_config.config_web.rendered
   tags = { Name = local.name, Terraform = local.name }
   volume_tags = { Name = local.name }
-  connection {
-    type = "ssh"
-    host = self.public_ip
-    user = "ubuntu"
-    private_key = file("~/.ssh/aws_${local.app}")
-  }
-  provisioner "file" {
-    source = "production/"
-    destination = "/var/${local.app}"
-  }
-  provisioner "remote-exec" {
-    inline = ["/var/${local.app}/setup/production-provision.sh ${local.app} ${local.name}"]
-  }
   lifecycle {
     create_before_destroy = true
     ignore_changes = [tags]
@@ -240,11 +229,24 @@ data "template_file" "postgres" {
 data "template_file" "env_production" {
   template = file("../config/env-production-template.js")
   vars = {
+    web_host = var.web_host
     oidc_host = var.oidc_host
     oidc_id = var.oidc_id
     oidc_secret = var.oidc_secret
     oidc_email_domain = var.oidc_email_domain
     web_secret = random_string.web_secret.result
+  }
+}
+
+resource "null_resource" "web_provision" {
+  connection {
+    type = "ssh"
+    host = aws_eip_association.web_address.public_ip
+    user = "ubuntu"
+    private_key = file("~/.ssh/aws_${local.app}")
+  }
+  provisioner "remote-exec" {
+    inline = ["/var/${local.app}/setup/production-provision.sh ${local.app} ${local.name} ${var.web_host} ${var.le_contact}"]
   }
 }
 

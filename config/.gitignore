@@ -1,2 +1,2 @@
 env-development.js
-ssl*
+tls/*.pem

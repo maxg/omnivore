@@ -91,13 +91,14 @@ async function createAppServer(course) {
     next();
   }
   
-  return https.createServer({
-    key: fs.readFileSync('./config/ssl-private-key.pem'),
-    cert: fs.readFileSync('./config/ssl-certificate.pem'),
-    ca: fs.readdirSync('./config')
-          .filter(f => /ssl-intermediate/.test(f))
-          .map(f => fs.readFileSync('./config/' + f)),
-  }, app);
+  let server = https.createServer(app);
+  let certify = () => server.setSecureContext({
+    key: fs.readFileSync('./config/tls/privkey.pem'),
+    cert: fs.readFileSync('./config/tls/fullchain.pem'),
+  });
+  certify();
+  setInterval(certify, 1000 * 60 * 60 * 24).unref();
+  return server;
 }
 
 async function createCourseProxy(hosturl) {

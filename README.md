@@ -36,8 +36,6 @@ It provides variables for both backend (during `init`) and configuration.
 
 Create a SSH keypair in: `~/.ssh/aws_omnivore{,.pub}`
 
-Obtain SSL certificates and save in: `setup/production/config/ssl-{certificate,intermediate-*,private-key}.pem`
-
 In `setup`...
 
 Run: `terraform init -backend-config=terraform.tfvars`
