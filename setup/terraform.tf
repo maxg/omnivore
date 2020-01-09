@@ -107,6 +107,7 @@ resource "random_string" "postgres_app_password" {
 resource "aws_db_instance" "default" {
   identifier = local.name
   allocated_storage = 5
+  max_allocated_storage = 10
   storage_type = "gp2"
   engine = "postgres"
   engine_version = "11"
