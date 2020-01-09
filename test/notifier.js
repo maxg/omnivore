@@ -36,6 +36,7 @@ describe('notifier', function() {
   
   let ready = new Promise(resolve => omni.once('ready', resolve));
   before(done => { ready.then(done) });
+  after(done => omni.close(done));
   
   before(done => slacker.listen(0, 'localhost', done));
   after(done => slacker.close(done));

@@ -275,7 +275,7 @@ exports.createApp = function createApp(hosturl, omni) {
       data,
       path: prefix + upload_id,
     });
-    setTimeout(() => pending_uploads.delete(upload_id), timeout);
+    setTimeout(() => pending_uploads.delete(upload_id), timeout).unref();
     return prefix + upload_id;
   }
   

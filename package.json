@@ -11,13 +11,13 @@
     "body-parser": "^1.19.0",
     "bunyan": "^1.8.12",
     "cookie-parser": "^1.4.4",
-    "cookie-session": "^1.3.3",
+    "cookie-session": "^1.4.0",
     "csv": "^0.4.6",
     "express": "^4.17.1",
-    "http-proxy": "^1.17.0",
+    "http-proxy": "^1.18.0",
     "memoizee": "^0.4.14",
     "multer": "^1.4.2",
-    "openid-client": "^3.10.0",
+    "openid-client": "^3.10.1",
     "passport": "^0.4.1",
     "pg": "^6.4.2",
     "pug": "^2.0.4",
@@ -28,11 +28,11 @@
     "xtypejs-extension-custom-types": "^0.1.1"
   },
   "devDependencies": {
-    "mocha": "^3.5.3",
+    "mocha": "^7.0.0",
     "request": "^2.88.0",
     "should": "^11.2.1",
     "sinon": "^1.17.7",
-    "tap-mocha-reporter": "^3.0.9"
+    "tap-mocha-reporter": "^5.0.1"
   },
   "engines": {
     "node": "^12.14.0"

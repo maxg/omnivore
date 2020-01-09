@@ -39,14 +39,15 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config, create) {
     return this._log[ms < 50 ? 'debug' : ms < 250 ? 'info' : 'warn'].bind(this._log);
   };
   
-  this._connect = cb => pg.connect(Object.assign({ database: course }, this.config.db), cb);
+  this._pool = new pg.Pool(Object.assign({ database: course }, this.config.db));
   
   this._functions = {};
   
   async.waterfall([
-    cb => pg.connect(Object.assign({ database: 'postgres' }, this.config.db), cb),
-    (client, done, cb) => {
-      this.once('ready', done);
+    cb => cb(null, new pg.Client(Object.assign({ database: 'postgres' }, this.config.db))),
+    (client, cb) => client.connect(err => cb(err, client)),
+    (client, cb) => {
+      this.once('ready', () => client.end());
       client.query({
         text: 'SELECT * FROM pg_catalog.pg_database WHERE datname = $1',
         values: [ course ],
@@ -57,12 +58,10 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config, create) {
       if ( ! create) { return cb(new Error(`no course ${course}`)); }
       client.query('CREATE DATABASE "' + course + '"', cb);
     },
-    (created, cb) => this._connect((err, client, done) => cb(err, created, client, done)),
-    (created, client, done, cb) => {
-      this.once('ready', done);
+    (created, cb) => {
       if (created) {
         this._log.info({ course }, 'initializing');
-        return client.query(db_schema, cb);
+        return this._pool.query(db_schema, cb);
       }
       cb();
     }
@@ -137,7 +136,7 @@ function client(fn) {
     types.assert(cb, 'function', 'callback');
     let self = this;
     
-    this._connect((err, client, done) => {
+    this._pool.connect((err, client, done) => {
       if (err) { done(err); return cb(err); }
       
       client.inspect = function(depth, opts) { return '[client]'; }
@@ -199,7 +198,7 @@ Omnivore.prototype.pg = client(
 }));
 
 // close the database connection
-Omnivore.prototype.pg.end = () => pg.end();
+Omnivore.prototype.close = function(done) { this._pool.end(done); };
 
 Omnivore.prototype.parse = client(
                            types.check([ pg.Client, 'agent', 'string', 'string' ], [ 'row_array' ],
