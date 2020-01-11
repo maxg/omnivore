@@ -26,17 +26,14 @@ Deployment
 
 Install [Packer](https://www.packer.io/) and [Terraform](https://www.terraform.io/) (*e.g.* with [`brew install`](https://brew.sh/) on macOS).
 
-**On Amazon Web Services**
+In `setup`...
 
-Fill in `setup/packer.conf.json` following the example.
-Run `bin/pack` to generate an AMI, *e.g.*: `bin/pack HEAD`
+Fill in `packer.conf.json` following the example.
+Run `pack` to generate an AMI, *e.g.*: `./pack HEAD`
 
-Fill in `setup/terraform.tfvars` following the example.
-It provides variables for both backend (during `init`) and configuration.
+Fill in `terraform.tfvars` (which provides variables for both `s3` backend and deployment config) and `terraform.auto.tfvars` following the examples.
 
 Create a SSH keypair in: `~/.ssh/aws_omnivore{,.pub}`
-
-In `setup`...
 
 Run: `terraform init -backend-config=terraform.tfvars`
 
