@@ -15,15 +15,25 @@ createdb T.001/ia00
 $psql -f config/schema.sql
 $psql -f test/fixtures/base.sql
 
-tests=(test/db/${@:-*}.sql)
+txn_begin='BEGIN; DO $$ DECLARE result RECORD; BEGIN '
+txn_end='END $$; ROLLBACK;'
+
 {
-    echo 1..${#tests[@]}
+    alltests=(test/db/${@:-*}.sql test/db-update/${@:-*}.ante.sql)
+    echo 1..${#alltests[@]}
+    
+    tests=(test/db/${@:-*}.sql)
     for test in ${tests[@]}; do
-        $psql -f <(cat \
-            <(echo -n 'BEGIN; DO $$ DECLARE result RECORD; BEGIN ') $test \
-            <(echo 'END $$; ROLLBACK;')) &&
-        echo -n ok ||
-        echo -n not ok
+        $psql -f <(cat <(echo -n "$txn_begin") $test <(echo "$txn_end")) &&
+        echo -n ok || echo -n not ok
         echo " $(basename $test .sql)"
+    done
+    
+    tests=(test/db-update/${@:-*}.ante.sql)
+    for test in ${tests[@]}; do
+        $psql -f <(cat <(echo -n "$txn_begin") $test \
+            config/update.sql ${test/.ante/.post} <(echo -n "$txn_end")) &&
+        echo -n ok || echo -n not ok
+        echo " update/$(basename $test .ante.sql)"
     done
 } | node_modules/.bin/tap-mocha-reporter spec
