@@ -232,42 +232,6 @@ CREATE OR REPLACE RULE raw_data_on_insert_delete_stale_current AS ON INSERT TO r
 CREATE OR REPLACE RULE raw_data_on_delete_delete_stale_current AS ON DELETE TO raw_data
     DO DELETE FROM current_data WHERE key = OLD.key AND username = OLD.username;
 
-CREATE TABLE IF NOT EXISTS all_computed (
-    username TEXT NOT NULL REFERENCES users,
-    key LTREE NOT NULL REFERENCES keys,
-    ts TIMESTAMP(3) WITH TIME ZONE,
-    value JSONB,
-    penalty_applied TEXT REFERENCES penalties(penalty_id),
-    created TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (username, key, ts, value, penalty_applied)
-);
-CREATE UNIQUE INDEX all_computed_unique_with_null_penalty_applied ON all_computed (username, key, ts, value) WHERE penalty_applied IS NULL;
-CREATE INDEX all_computed_key_gist ON all_computed USING gist(key);
-
--- XXX improve w/o breaking concurrent transactions?
-CREATE OR REPLACE FUNCTION all_computed_ensure_foreign() RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO users (username) VALUES (NEW.username) ON CONFLICT DO NOTHING;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER all_computed_on_insert_ensure_foreign BEFORE INSERT ON all_computed
-    FOR EACH ROW EXECUTE PROCEDURE all_computed_ensure_foreign();
-
-CREATE OR REPLACE FUNCTION all_computed_ensure_key() RETURNS TRIGGER AS $$
-BEGIN
-    -- XXX WHERE NOT EXISTS clause doesn't work with keys_on_insert_delete_stale_computed!
-    INSERT INTO keys (key) SELECT NEW.key WHERE NOT EXISTS (SELECT 1 FROM keys WHERE key = NEW.key);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER all_computed_on_insert_ensure_key BEFORE INSERT ON all_computed
-    FOR EACH ROW EXECUTE PROCEDURE all_computed_ensure_key();
-
-CREATE OR REPLACE RULE all_computed_prevent_update AS ON UPDATE TO all_computed DO INSTEAD NOTHING;
-
-CREATE OR REPLACE RULE all_computed_prevent_delete AS ON DELETE TO all_computed DO INSTEAD NOTHING;
-
 CREATE TABLE IF NOT EXISTS current_computed (
     username TEXT NOT NULL REFERENCES users,
     key LTREE NOT NULL REFERENCES keys,
@@ -275,22 +239,33 @@ CREATE TABLE IF NOT EXISTS current_computed (
     value JSONB,
     penalty_applied TEXT REFERENCES penalties(penalty_id),
     created TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (username, key),
-    CONSTRAINT current_computed_refs_all_computed FOREIGN KEY (username, key, ts, value, penalty_applied) REFERENCES all_computed (username, key, ts, value, penalty_applied)
+    PRIMARY KEY (username, key)
 );
 CREATE INDEX current_computed_key_gist ON current_computed USING gist(key);
 
--- TODO must actually have the same row, not just the same key triple!
--- TODO must be the row with the largest ts?
+-- XXX improve w/o breaking concurrent transactions?
+CREATE OR REPLACE FUNCTION current_computed_ensure_foreign() RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO users (username) VALUES (NEW.username) ON CONFLICT DO NOTHING;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER current_computed_on_insert_ensure_foreign BEFORE INSERT ON current_computed
+    FOR EACH ROW EXECUTE PROCEDURE current_computed_ensure_foreign();
 
--- TODO test me
+CREATE OR REPLACE FUNCTION current_computed_ensure_key() RETURNS TRIGGER AS $$
+BEGIN
+    -- XXX WHERE NOT EXISTS clause doesn't work with keys_on_insert_delete_stale_computed!
+    INSERT INTO keys (key) SELECT NEW.key WHERE NOT EXISTS (SELECT 1 FROM keys WHERE key = NEW.key);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER current_computed_on_insert_ensure_key BEFORE INSERT ON current_computed
+    FOR EACH ROW EXECUTE PROCEDURE current_computed_ensure_key();
+
 CREATE OR REPLACE FUNCTION current_computed_replace() RETURNS TRIGGER AS $$
 BEGIN
-    BEGIN
-        INSERT INTO all_computed SELECT NEW.*;
-    EXCEPTION
-        WHEN unique_violation THEN -- TODO is this best way to handle re-inserting duplicate computed value?
-    END;
+    PERFORM pg_advisory_xact_lock(hashtext(NEW.username)); -- XXX otherwise concurrent inserts can fail
     DELETE FROM current_computed WHERE username = NEW.username AND key = NEW.key;
     RETURN NEW;
 END;
@@ -525,6 +500,6 @@ CREATE OR REPLACE VIEW history AS
         UNION
         SELECT username, key, ts, value, penalty_applied, created, FALSE AS raw, FALSE AS computed FROM all_data
         UNION
-        SELECT username, key, ts, value, penalty_applied, created, FALSE AS raw, TRUE AS computed FROM all_computed
+        SELECT username, key, ts, value, penalty_applied, created, FALSE AS raw, TRUE AS computed FROM current_computed
     ) combined USING (key)
 ;

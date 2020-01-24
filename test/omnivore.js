@@ -738,12 +738,23 @@ describe('Omnivore', function() {
       }));
     });
     
-    it('should return all history for key', done => {
+    it('should return all history for data', done => {
+      omni.history({ key: '/test/alpha' }, bail(done, rows => {
+        rows.should.read([
+          { username: 'alice', ts: t_plus(now, 1), value: 90, raw: true },
+          { username: 'alice', ts: now, value: 80, raw: false },
+          { username: 'alice', ts: now, value: 80, raw: true },
+          { username: 'bob', ts: now, value: 100, raw: false },
+          { username: 'bob', ts: now, value: 100, raw: true },
+        ]);
+        done();
+      }));
+    });
+
+    it('should return current history for output', done => {
       omni.history({ key: '/test/beta' }, bail(done, rows => {
         rows.should.read([
-          { username: 'alice', ts: now, value: 40, raw: false },
           { username: 'bob', ts: t_plus(now, 1), value: 10, raw: true },
-          { username: 'bob', ts: now, value: 50, raw: false },
         ]);
         done();
       }));
@@ -759,7 +770,7 @@ describe('Omnivore', function() {
         results.should.read([
           [ { username: 'bob', value: 70 }, { username: 'bob', value: 70 } ],
           [],
-          [ { username: 'alice', value: 160 }, { username: 'bob', value: 200 } ],
+          [ { username: 'bob', value: 200 } ],
           [],
         ]);
         done();
