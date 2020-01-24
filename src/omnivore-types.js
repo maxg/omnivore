@@ -78,7 +78,7 @@ const isType = exports.is = function is(val, type) {
 // assert that a value has a given xtype
 const assertType = exports.assert = function assertType(val, type, desc) {
   if ( ! isType(val, type)) {
-    assert.fail(xtype(val), type, `expected ${desc || 'instance of'} ${type}, was ${xtype(val)} ${util.inspect(val)}`);
+    assert.fail(`expected ${desc || 'instance of'} ${type}, was ${xtype(val)} ${util.inspect(val)}`);
   }
   return val;
 };
