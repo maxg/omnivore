@@ -1299,5 +1299,30 @@ describe('Omnivore', function() {
         done();
       }));
     });
+    
+    context('computation', () => {
+      
+      beforeEach(done => {
+        async.series([
+          cb => omni.active('/test/*', now, cb),
+          cb => omni.compute('/test', 'y', [ 'x' ], x => `y=${x / 2}`, cb),
+        ], done);
+      });
+      
+      it('should precompute output', done => {
+        async.series([
+          cb => omni.get({ hidden: true }, cb),
+          cb => omni.add('tester', 'alice', '/test/x', new Date(), 2, cb),
+          cb => omni.cron(cb),
+          cb => omni.add('tester', 'alice', '/test/z', new Date(), 'z', cb),
+          cb => omni.get({ hidden: true }, cb),
+        ], bail(done, results => {
+          results[0].should.read([ { key: '/test/x', value: 0 }, { value: 'y=0' } ]);
+          results[4].should.read([ { key: '/test/x', value: 2 }, { value: 'y=1' }, { value: 'z' } ]);
+          (+results[4][1].created).should.be.lessThan(+results[4][2].created);
+          done();
+        }));
+      });
+    });
   });
 });

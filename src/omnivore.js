@@ -768,5 +768,17 @@ Omnivore.prototype.compute = client(transaction(
 Omnivore.prototype.cron = client(
                           Omnivore.prototype._cron = function _cron(client, done) {
   //console.log('cron');
-  client.query(db_update, done);
+  async.waterfall([
+    cb => client.query(db_update, cb),
+    (_, cb) => client.query({
+      name: 'cron-delete-precompute_queue',
+      text: 'DELETE FROM precompute_queue RETURNING *',
+    }, cb),
+    (result, cb) => cb(null, types.convertOut(result.rows, 'row_array')),
+    (rows, cb) => async.series(rows.map(row => cb => setTimeout(() => this.get({
+      username: row.username,
+      key: row.key,
+      hidden: true,
+    }, cb), 10)), cb),
+  ], done);
 });

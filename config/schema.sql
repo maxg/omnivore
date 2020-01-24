@@ -447,6 +447,16 @@ CREATE OR REPLACE RULE computations_on_delete_delete_stale_computed AS ON DELETE
         ) SELECT output FROM all_computations
     );
 
+CREATE UNLOGGED TABLE IF NOT EXISTS precompute_queue (
+    username TEXT NOT NULL REFERENCES users,
+    key LTREE NOT NULL REFERENCES keys,
+    PRIMARY KEY (username, key)
+);
+CREATE INDEX precompute_queue_key_gist ON precompute_queue USING gist(key);
+
+CREATE OR REPLACE RULE current_computed_on_delete_queue_precompute AS ON DELETE TO current_computed
+    DO INSERT INTO precompute_queue VALUES (OLD.username, OLD.key) ON CONFLICT DO NOTHING;
+
 CREATE OR REPLACE VIEW raw_grades AS
     SELECT username, key, active, visible, deadline, penalty_id, penalty_description, penalize, ts, value, agent, created FROM
     (
