@@ -300,7 +300,6 @@ Omnivore.prototype.multiget = client(transaction(
   ], done);
 })));
 
-// TODO TEST
 // get child data points
 Omnivore.prototype.children = client(transaction(
                               types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
@@ -320,7 +319,6 @@ Omnivore.prototype.children = client(transaction(
   ], done);
 })));
 
-// TODO TEST
 // get subdirectories
 Omnivore.prototype.dirs = client(transaction(
                           types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
@@ -339,7 +337,6 @@ Omnivore.prototype.dirs = client(transaction(
   ], done);
 })));
 
-// TODO TEST
 // get child keys
 Omnivore.prototype.leaves = client(transaction(
                             types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
@@ -358,7 +355,6 @@ Omnivore.prototype.leaves = client(transaction(
   ], done);
 })));
 
-// TODO TEST
 // query for keys
 Omnivore.prototype.findKeys = client(transaction(
                               types.translate([ pg.Client, 'key_path_query', 'spec' ], [ 'row_array' ],

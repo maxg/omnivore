@@ -710,6 +710,59 @@ describe('Omnivore', function() {
     it('should not return hidden output');
   });
   
+  describe('#children()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.pg((client, done) => client.query(fixtures('small'), done), cb),
+        cb => omni.add('nanoquizzer', 'alice', '/test/class_3/nanoquiz', now, 7, cb),
+      ], done);
+    });
+    
+    it('should return values for user + key', done => {
+      omni.children({ username: 'alice', key: '/test/class-3', hidden: true }, bail(done, rows => {
+        rows.should.read([ { username: 'alice', key: '/test/class-3/nanoquiz', value: 7 } ]);
+        done();
+      }));
+    });
+    
+    it('should return values for user');
+    
+    it('should return values for key');
+    
+    it('should not return hidden values', done => {
+      omni.children({ username: 'alice', key: '/test/class-3' }, bail(done, rows => {
+        rows.should.read([]);
+        done();
+      }));
+    });
+  });
+  
+  describe('#dirs()', () => {
+    
+    it('should return subdirs of dir')
+    
+    it('should return subdirs of root')
+    
+    it('should not return subdirs of hidden values');
+  });
+  
+  describe('#leaves()', () => {
+    
+    it('should return children of root');
+    
+    it('should return children of dir');
+    
+    it('should not return hidden children');
+  });
+  
+  describe('#findKeys()', () => {
+    
+    it('should return keys');
+    
+    it('should not return hidden keys');
+  });
+  
   describe('#history()', () => {
     
     beforeEach(done => {
