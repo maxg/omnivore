@@ -57,7 +57,8 @@ const convert = exports.convert = function convert(val) {
   if (val === '') { return undefined; }
   if (val === 'true') { return true; }
   if (val === 'false') { return false; }
-  return val;
+  // does not convert: nan, value_array, and value_object
+  return val.replace(/\r\n?/g, '\n');
 };
 convert.is_int = RegExp.prototype.test.bind(csv.parse().is_int);
 convert.is_float = csv.parse().is_float;

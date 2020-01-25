@@ -39,6 +39,7 @@ describe('Omnivore', function() {
           [ [ `5`, 5 ], [ `"5"`, 5 ], [ `-5.1`, -5.1 ] ] ],
         [ 'string',
           [ [ `a`, 'a' ], [ `"'hello'\n""there"""`, `'hello'\n"there"` ], [ `" "`, ' ' ],
+            [ `"hello\r\nthere\r\n"`, `hello\nthere\n`],
             [ `null`, 'null' ], [ `undefined`, 'undefined' ] ] ],
         [ 'undefined',
           [ [ ``, undefined ], [ `""`, undefined ], [ `   `, undefined ] ] ],
