@@ -110,12 +110,11 @@ describe('serve-course', function() {
       }));
     });
     
-    it('should render index for students', done => {
+    it('should temporarily redirect to user for students', done => {
       req.headers({ [x_auth_user]: 'alice' }).get(url, bail(done, (res, body) => {
-        app.render.templates().should.eql([ 'course' ]);
-        body.should.match(/My grades/);
-        body.should.not.match(/All grades/);
-        body.should.not.match(/Upload grades/);
+        res.statusCode.should.eql(302);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}/u/alice/`);
         done();
       }));
     });

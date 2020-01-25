@@ -143,7 +143,12 @@ exports.createApp = function createApp(hosturl, omni) {
     next();
   });
   
-  app.get('/', (req, res) => res.render('course'));
+  app.get('/', (req, res) => {
+    if (res.locals.authstaff) {
+      return res.render('course');
+    }
+    res.redirect(302, `/${omni.course}/u/${res.locals.authuser}/`);
+  });
   
   function authorize(req, res, next) {
     if (req.params.username !== res.locals.authuser) {
