@@ -37,10 +37,12 @@ mixin value(value)
     = value
 
 mixin editvalue(grade)
-  if types.is(grade.value, 'string') && grade.key.endsWith('-comment')
-    textarea.form-control(name=grade.key, rows=3, cols=30)=grade.value
+  if types.is(grade.value, 'string') && grade.value.includes('\n')
+    textarea.form-control(name=grade.key, rows=grade.value.split('\n').length, cols=40)=grade.value
   else if types.is(grade.value, 'boolean number string')
-    input.form-control(type='text', name=grade.key, value=''+grade.value, size=10)
+    input.form-control(type='text', name=grade.key, value=''+grade.value, size=20)
+  else if grade.value === null
+    textarea.form-control(name=grade.key, rows=1, cols=40)=grade.value
   else
     | Cannot edit #{types.which(grade.value, types.value_types)}
 
