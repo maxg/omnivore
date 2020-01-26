@@ -12,7 +12,7 @@ append content
       tbody
         each row in dirs
           tr
-            td.bullet
+            td.bullet(data-dir=true)
             td.key: a(href=`/${course}/grades${row.key}`): +key(path.relative(key, row.key))
   
   if children.length

@@ -5,7 +5,6 @@ append head
 
 append content
   
-  p= username
   p.key: +keynav(key)
   
   if ! grade.visible
@@ -26,7 +25,7 @@ append content
     tbody
       tr
         td.bullet(data-computed=grade.computed)
-        td.value: +value(grade.value)
+        td.value(data-type=types.which(grade.value, types.value_types)): +value(grade.value)
         td.ts: +ts(grade.ts)
         td.late(data-on=grade.penalty_applied)= grade.penalty_applied
         td.override(data-on=grade.ts && grade.compute && ! grade.computed)
@@ -40,7 +39,7 @@ append content
         each row in history
           tr
             td.bullet(data-computed=row.computed)
-            td.value: +value(row.value)
+            td.value(data-type=types.which(row.value, types.value_types)): +value(row.value)
             td.ts: +ts(row.ts)
             td.raw(data-on=row.raw)
   
@@ -52,7 +51,7 @@ append content
           tr
             td.bullet(data-computed=row.computed)
             td.key: a(href=`/${course}/u/${username}${row.key}`): +key(path.relative(path.dirname(key), row.key))
-            td.value: +value(row.value)
+            td.value(data-type=types.which(row.value, types.value_types)): +value(row.value)
             td.ts: +ts(row.ts)
             td.due.ts(data-value=row.deadline): +ts(row.deadline)
             td.late(data-on=row.penalty_applied)
@@ -70,7 +69,7 @@ append content
           tr
             td.bullet(data-computed=row.computed)
             td.key: a(href=`/${course}/u/${username}${row.key}`): +key(path.relative(path.dirname(key), row.key))
-            td.value: +value(row.value)
+            td.value(data-type=types.which(row.value, types.value_types)): +value(row.value)
             td.ts: +ts(row.ts)
             td.due.ts(data-value=row.deadline): +ts(row.deadline)
             td.late(data-on=row.penalty_applied)

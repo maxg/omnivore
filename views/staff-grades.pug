@@ -14,5 +14,5 @@ append content
       each row in grades
         tr
           td.user: a(href=`/${course}/u/${row.username}${key}`)= row.username
-          td.value: +value(row.value)
+          td.value(data-type=types.which(row.value, types.value_types)): +value(row.value)
           td.ts: +ts(row.ts)

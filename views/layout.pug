@@ -9,7 +9,9 @@ mixin key(key)
       wbr
 
 mixin keynav(key)
-  a(href='.'): +key(path.dirname(key))
+  a(href='.')
+    span.root= username || '*'
+    +key(path.dirname(key))
   if path.dirname(key) != '/'
     | /
   +key(path.basename(key))
