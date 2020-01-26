@@ -26,7 +26,9 @@ txn_end='END $$; ROLLBACK;'
     for test in ${tests[@]}; do
         $psql -f <(cat <(echo -n "$txn_begin") $test <(echo "$txn_end")) &&
         echo -n ok || echo -n not ok
-        echo " $(basename $test .sql)"
+        echo -n " $(basename $test .sql)"
+        [ -s $test ] || echo -n ' # TODO'
+        echo
     done
     
     tests=(test/db-update/${@:-*}.ante.sql)
@@ -34,6 +36,8 @@ txn_end='END $$; ROLLBACK;'
         $psql -f <(cat <(echo -n "$txn_begin") $test \
             config/update.sql ${test/.ante/.post} <(echo -n "$txn_end")) &&
         echo -n ok || echo -n not ok
-        echo " update/$(basename $test .ante.sql)"
+        echo -n " update/$(basename $test .ante.sql)"
+        [ -s $test ] || echo -n ' # TODO'
+        echo
     done
 } | node_modules/.bin/tap-mocha-reporter spec
