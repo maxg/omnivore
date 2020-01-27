@@ -338,34 +338,121 @@ describe('serve-course', function() {
   
   describe('GET /user/:key', () => {
     
-    it('should redirect to user key');
+    let url = '/user/test/class-2';
     
-    it('w/ / should redirect to user key');
+    it('should redirect to user key', done => {
+      req.headers({ [x_auth_user]: 'bob' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(301);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}/u/bob/test/class-2`);
+        done();
+      }));
+    });
+    
+    it('w/ / should redirect to user key', done => {
+      req.headers({ [x_auth_user]: 'bob' }).get(`${url}/`, bail(done, (res, body) => {
+        res.statusCode.should.eql(301);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}/u/bob/test/class-2/`);
+        done();
+      }));
+    });
   });
   
-  describe('GET /grades', () => {
+  describe('GET /grades/', () => {
     
-    it('should require staff');
+    let url = '/grades/';
     
-    it('should render grades root');
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
+    
+    it('should render grades root', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'staff-dir' ]);
+        body.should.match(/bullet.*<a.*test.*test/);
+        done();
+      }));
+    });
+    
+    it('w/o / should redirect to grades root', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(url.split(/\/$/)[0], bail(done, (res, body) => {
+        res.statusCode.should.eql(301);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}${url}`);
+        done();
+      }));
+    });
   });
   
   describe('GET /grades/:internal-key', () => {
     
-    it('should require staff');
+    let url = '/grades/test/class-1';
     
-    it('should render internal key');
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
     
-    it('w/ / should redirect to internal key');
+    it('should render internal key', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'staff-dir' ]);
+        body.should.match(/test.*class-1.*bullet.*<a.*nanoquiz.*nanoquiz/);
+        done();
+      }));
+    });
+    
+    it('w/ / should redirect to internal key', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(`${url}/`, bail(done, (res, body) => {
+        res.statusCode.should.eql(301);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}${url}`);
+        done();
+      }));
+    });
   });
   
   describe('GET /grades/:leaf-key', () => {
     
-    it('should require staff');
+    let url = '/grades/test/class-1/nanoquiz';
     
-    it('should render leaf key');
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
     
-    it('w/ / should redirect to leaf key');
+    it('should render leaf key', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'staff-grades' ]);
+        body.should.match(/test.*class-1.*nanoquiz.*alice.*10.*bob.*9/);
+        done();
+      }));
+    });
+    
+    it('w/ / should redirect to leaf key', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(`${url}/`, bail(done, (res, body) => {
+        res.statusCode.should.eql(301);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}${url}`);
+        done();
+      }));
+    });
   });
   
   describe('GET /grades/:keys.csv', () => {

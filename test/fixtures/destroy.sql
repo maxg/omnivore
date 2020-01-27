@@ -5,6 +5,7 @@ TRUNCATE
     active_rules,
     visible_rules,
     penalties,
+    deadline_rules,
     keys,
     computation_rules
     CASCADE;

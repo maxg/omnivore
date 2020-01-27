@@ -708,6 +708,8 @@ describe('Omnivore', function() {
     it('should not return hidden data');
     
     it('should not return hidden output');
+    
+    it('should limit users to roster');
   });
   
   describe('#children()', () => {
@@ -1210,6 +1212,8 @@ describe('Omnivore', function() {
       }));
     });
     
+    it('should add compute rule with prefix matching');
+    
     it('should add compute rule with negation', done => {
       async.series([
         cb => omni.compute('/test/!x', 'a', [ '!y/d' ], d => JSON.stringify(d), cb),
@@ -1257,6 +1261,8 @@ describe('Omnivore', function() {
         done();
       }));
     });
+    
+    it('should add compute rule with word prefix matching');
     
     it('should add asynchronous compute rule', done => {
       async.series([

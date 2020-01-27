@@ -242,6 +242,7 @@ exports.createApp = function createApp(hosturl, omni) {
     });
   });
   app.get('/grades/:key(*)/', (req, res, next) => res.redirect(301, `/${omni.course}${req.path.slice(0, -1)}`));
+  app.get('/grades', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
   
   app.get('/grades/:keys(*).csv', staffonly, (req, res, next) => {
     let prefix = omnivore.types.common(req.params.keys).slice(1);
