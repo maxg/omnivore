@@ -19,7 +19,7 @@ append content
     table
       tbody
         each row in children
-          tr
+          tr(data-promoted=row.promotion > 0)
             td.bullet(data-computed=row.computed)
             td.key: a(href=`/${course}/grades${row.key}`): +key(path.relative(key, row.key))
             td.due.ts(data-value=row.deadline): +ts(row.deadline)

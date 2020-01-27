@@ -39,12 +39,24 @@ CREATE TABLE IF NOT EXISTS deadline_rules (
     penalty_id TEXT NOT NULL REFERENCES penalties
 );
 
+CREATE TABLE IF NOT EXISTS key_rules (
+    keys LQUERY NOT NULL,
+    key_order SMALLINT,
+    promotion SMALLINT,
+    key_comment TEXT,
+    values_comment TEXT
+);
+
 CREATE TABLE IF NOT EXISTS keys (
     key LTREE NOT NULL PRIMARY KEY,
     active BOOLEAN NOT NULL DEFAULT FALSE,
     visible BOOLEAN NOT NULL DEFAULT FALSE,
     deadline TIMESTAMP(3) WITH TIME ZONE,
-    penalty_id TEXT REFERENCES penalties
+    penalty_id TEXT REFERENCES penalties,
+    key_order SMALLINT,
+    promotion SMALLINT,
+    key_comment TEXT,
+    values_comment TEXT
 );
 CREATE INDEX keys_key_gist ON keys USING gist(key);
 CREATE INDEX keys_active_visible_idx ON keys (active, visible);
@@ -68,6 +80,10 @@ BEGIN
     NEW.visible = EXISTS(SELECT 1 FROM visible_rules WHERE NEW.key ~ keys AND after <= CURRENT_TIMESTAMP);
     NEW.deadline = (SELECT deadline FROM deadline_rules WHERE NEW.key ~ keys);
     NEW.penalty_id = (SELECT penalty_id FROM deadline_rules WHERE NEW.key ~ keys);
+    NEW.key_order = (SELECT MAX(key_order) FROM key_rules WHERE NEW.key ~ keys);
+    NEW.promotion = (SELECT MAX(promotion) FROM key_rules WHERE NEW.key ~ keys);
+    NEW.key_comment = (SELECT MAX(key_comment) FROM key_rules WHERE NEW.key ~ keys);
+    NEW.values_comment = (SELECT MAX(values_comment) FROM key_rules WHERE NEW.key ~ keys);
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -110,11 +126,20 @@ CREATE OR REPLACE RULE deadline_rules_on_update_update_new AS ON UPDATE TO deadl
 CREATE OR REPLACE RULE deadline_rules_on_delete_update AS ON DELETE TO deadline_rules
     DO UPDATE keys SET deadline = NULL, penalty_id = NULL WHERE key ~ OLD.keys;
 
-CREATE TABLE IF NOT EXISTS key_orders (
-    key LTREE NOT NULL PRIMARY KEY REFERENCES keys,
-    key_order SMALLINT NOT NULL,
-    UNIQUE (key, key_order)
-);
+CREATE OR REPLACE FUNCTION key_rules_apply_rules() RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE keys SET (key_order, promotion, key_comment, values_comment) =
+        (SELECT MAX(key_order), MAX(promotion), MAX(key_comment), MAX(values_comment) FROM key_rules WHERE key ~ keys)
+    WHERE key ~ NEW.keys OR key ~ OLD.keys;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER key_rules_on_insert_apply_rules AFTER INSERT ON key_rules
+    FOR EACH ROW EXECUTE PROCEDURE key_rules_apply_rules();
+CREATE TRIGGER key_rules_on_update_apply_rules AFTER UPDATE ON key_rules
+    FOR EACH ROW EXECUTE PROCEDURE key_rules_apply_rules();
+CREATE TRIGGER key_rules_on_delete_apply_rules AFTER DELETE ON key_rules
+    FOR EACH ROW EXECUTE PROCEDURE key_rules_apply_rules();
 
 CREATE TABLE IF NOT EXISTS raw_data (
     username TEXT NOT NULL REFERENCES users,
@@ -474,7 +499,7 @@ CREATE OR REPLACE VIEW raw_grades AS
 ;
 
 CREATE OR REPLACE VIEW grades AS
-    SELECT users.*, keys.*, key_order, penalty_description, penalize, raw_data, computations.*,
+    SELECT users.*, keys.*, penalty_description, penalize, raw_data, computations.*,
         COALESCE(data.ts, comp.ts) AS ts,
         COALESCE(data.value, comp.value) AS value,
         CASE WHEN data.value IS NOT NULL THEN data.penalty_applied ELSE comp.penalty_applied END AS penalty_applied,
@@ -485,8 +510,6 @@ CREATE OR REPLACE VIEW grades AS
     users
     CROSS JOIN
     keys
-    LEFT JOIN
-    key_orders USING (key)
     LEFT JOIN
     penalties USING (penalty_id)
     LEFT JOIN

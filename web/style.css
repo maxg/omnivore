@@ -138,6 +138,7 @@ a.history::before { content: '[history]'; }
 a.csv { display: inline-block; margin: 0 10px; }
 a.csv::before { content: '[csv]'; }
 
+.bullet { text-align: right; }
 .bullet::after { content: '-'; white-space: pre; }
 .bullet[data-dir]::after { content: '  /'; }
 .bullet[data-computed]::after { content: '>'; }
@@ -156,10 +157,17 @@ a.csv::before { content: '[csv]'; }
 
 .raw[data-on]::before { content: '[input]'; }
 
+.key .detail,
+.value .detail { font-size: 15px; margin-left: 10px; }
+
 .detail .key,
 .detail .value { font-size: 15px; vertical-align: top; }
 .detail .key { text-align: right; }
 .detail .bullet { opacity: 0.25; }
+
+[data-promoted] .key,
+[data-promoted] .value,
+[data-promoted] + .detail .key { background: rgba(22, 149, 163, 0.1); }
 
 .roster[data-on]::before { content: '[=] '; }
 

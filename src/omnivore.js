@@ -319,6 +319,25 @@ Omnivore.prototype.children = client(transaction(
   ], done);
 })));
 
+Omnivore.prototype.grandchildren = client(transaction(
+                                   types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
+                                   Omnivore.prototype._grandchildren = function _grandchildren(client, spec, done) {
+  //console.log('grandchildren', spec);
+  
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'grandchildren-select-grades',
+      text: `SELECT * FROM grades
+             WHERE ($1 IS NULL OR username = $1) AND (visible OR $4)
+                   AND (promotion > 0 AND key ~ ($3||'*{2,'||promotion+1||'}')::LQUERY)
+             ORDER BY username, subltree(key, 0, nlevel($2)+1), nlevel(key) DESC, key_order, key`,
+      types: [ types.pg.TEXT, types.pg.LTREE, types.pg.TEXT, types.pg.BOOL ],
+      values: [ spec.username, spec.key, spec.key ? `${spec.key}.` : '', spec.hidden ],
+    }, cb),
+    (result, cb) => this._current(client, result.rows, cb),
+  ], done);
+})));
+
 // get subdirectories
 Omnivore.prototype.dirs = client(transaction(
                           types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
@@ -346,7 +365,7 @@ Omnivore.prototype.leaves = client(transaction(
   async.waterfall([
     cb => client.logQuery({
       name: 'leaves-select-keys',
-      text: `SELECT * FROM keys LEFT JOIN key_orders USING (key)
+      text: `SELECT * FROM keys
              WHERE (key ~ $1) AND (visible OR $2)
              ORDER BY key_order, key`,
       values: [ spec.key ? `${spec.key}.*{1}` : '*{1}', spec.hidden ],
@@ -364,7 +383,7 @@ Omnivore.prototype.findKeys = client(transaction(
   async.waterfall([
     cb => client.logQuery({
       name: 'findKeys-select-keys',
-      text: `SELECT * FROM keys LEFT JOIN key_orders USING (key)
+      text: `SELECT * FROM keys
              WHERE (key ~ $1) AND (visible OR $2)
              ORDER BY key_order, key`,
       values: [ query, spec.hidden ],
@@ -746,6 +765,17 @@ Omnivore.prototype.deadline = client(transaction(
     name: 'deadline-insert-deadline_rules',
     text: 'INSERT INTO deadline_rules (keys, deadline, penalty_id) VALUES ($1, $2, $3)',
     values: [ pattern, deadline, penalty ],
+  }, done);
+})));
+
+// add a key rule
+Omnivore.prototype.meta = client(transaction(
+                          types.translate([ pg.Client, 'key', 'object' ], [ 'any' ],
+                          function _meta(client, pattern, meta, done) {
+  client.logQuery({
+    name: 'meta-insert-key_rules',
+    text: 'INSERT INTO key_rules (keys, key_order, promotion, key_comment, values_comment) VALUES ($1, $2, $3, $4, $5)',
+    values: [ pattern, meta.key_order, meta.promotion, meta.key_comment, meta.values_comment ],
   }, done);
 })));
 

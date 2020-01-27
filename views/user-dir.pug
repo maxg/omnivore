@@ -14,6 +14,22 @@ append content
           tr
             td.bullet(data-dir=true)
             td.key: a(href=`/${course}/u/${username}${row.key}`): +key(path.relative(key, row.key))
+          while grandchildren.length && grandchildren[0].key.startsWith(row.key)
+            - let subrow = grandchildren.shift()
+            tr
+              td
+              td.bullet(data-computed=subrow.computed)
+              td.key
+                - let rel = path.relative(row.key, subrow.key)
+                if path.dirname(rel) !== '.'
+                  a(href=`/${course}/u/${username}${path.dirname(subrow.key)}`): +key(path.dirname(rel))
+                  | /
+                  +key(path.basename(subrow.key))
+                else
+                  +key(rel)
+              td.value(data-type=types.which(subrow.value, types.value_types))
+                +value(subrow.value)
+                span.detail= subrow.values_comment
   
   if children.length
     table
@@ -31,10 +47,14 @@ append content
               td.active(data-on=row.active)
               td: a(href=`/${course}/u/${username}${row.key}`) ...
           else
-            tr
+            tr(data-promoted=row.promotion > 0)
               td.bullet(data-computed=row.computed)
-              td.key: +key(path.relative(key, row.key))
-              td.value(data-type=types.which(row.value, types.value_types)): +value(row.value)
+              td.key
+                +key(path.relative(key, row.key))
+                .detail= row.key_comment
+              td.value(data-type=types.which(row.value, types.value_types))
+                +value(row.value)
+                span.detail= row.values_comment
               td.ts: +ts(row.ts)
               td.due.ts(data-value=row.deadline): +ts(row.deadline)
               td.late(data-on=row.penalty_applied)

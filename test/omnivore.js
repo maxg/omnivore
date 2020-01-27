@@ -740,6 +740,63 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('#grandchildren()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.pg((client, done) => client.query(fixtures('small'), done), cb),
+        cb => omni.meta('/test/*/nanoquiz', { promotion: 1 }, cb),
+        cb => omni.meta('/test/class_2/nanoquiz', { promotion: 2 }, cb),
+        cb => omni.add('tester', 'alice', '/test/class_3/nanoquiz', now, 7, cb),
+      ], done);
+    });
+    
+    it('should include promotion to subdir', done => {
+      omni.grandchildren({ username: 'alice', key: '/test', hidden: true }, bail(done, rows => {
+        rows.should.read([
+          { key: '/test/class-1/nanoquiz', value: 10 },
+          { key: '/test/class-2/nanoquiz', value: 8 },
+          { key: '/test/class-3/nanoquiz', value: 7 },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should include promotion to root', done => {
+      omni.grandchildren({ username: 'alice', key: '/' }, bail(done, rows => {
+        rows.should.read([ { key: '/test/class-2/nanoquiz', value: 8 } ]);
+        done();
+      }));
+    });
+    
+    it('should return values in order', done => {
+      async.series([
+        cb => omni.meta('/test/*/*/important', { promotion: 2 }, cb),
+        cb => omni.add('tester', 'alice', '/test/class_2/super/important', now, true, cb),
+        cb => omni.add('tester', 'alice', '/test/class_3/also/important', now, true, cb),
+        cb => omni.grandchildren({ username: 'alice', key: '/test', hidden: true }, cb),
+      ], bail(done, results => {
+        results[3].should.read([
+          { key: '/test/class-1/nanoquiz' },
+          { key: '/test/class-2/super/important' },
+          { key: '/test/class-2/nanoquiz' },
+          { key: '/test/class-3/also/important' },
+          { key: '/test/class-3/nanoquiz' },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should not return hidden values', done => {
+      omni.grandchildren({ username: 'alice', key: '/test' }, bail(done, rows => {
+        rows.should.read([
+          { key: '/test/class-1/nanoquiz' }, { key: '/test/class-2/nanoquiz' },
+        ]);
+        done();
+      }));
+    });
+  });
+  
   describe('#dirs()', () => {
     
     it('should return subdirs of dir')
@@ -1128,6 +1185,103 @@ describe('Omnivore', function() {
         results[2].should.read([
           { username: 'alice', key: '/test/a/b/c', ts: now, value: 100, deadline, penalty_id },
         ]);
+        done();
+      }));
+    });
+  });
+  
+  describe('#meta()', () => {
+    
+    it('should set promotion', done => {
+      async.series([
+        cb => omni.meta('/test/a/*', { promotion: 1 }, cb),
+        cb => omni.add('tester', 'alice', '/test/a/b', now, 1, cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[2].should.read([ { key: '/test/a/b', promotion: 1 } ]);
+        done();
+      }));
+    });
+    
+    it('should update promotion', done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/a/b', now, 1, cb),
+        cb => omni.meta('/test/a/*', { promotion: 1 }, cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[2].should.read([ { key: '/test/a/b', promotion: 1 } ]);
+        done();
+      }));
+    });
+    
+    it('should maximize promotion', done => {
+      async.series([
+        cb => omni.meta('/test/a/*', { promotion: 1 }, cb),
+        cb => omni.meta('/test/*/b', { promotion: 2 }, cb),
+        cb => omni.add('tester', 'alice', '/test/a/a', now, 1, cb),
+        cb => omni.add('tester', 'alice', '/test/a/b', now, 1, cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[4].should.read([ { key: '/test/a/a', promotion: 1 }, { key: '/test/a/b', promotion: 2 } ]);
+        done();
+      }));
+    });
+    
+    it('should set order', done => {
+      async.series([
+        cb => omni.meta('/test/a/*', { key_order: 1 }, cb),
+        cb => omni.add('tester', 'alice', '/test/a/b', now, 1, cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[2].should.read([ { key: '/test/a/b', key_order: 1 } ]);
+        done();
+      }));
+    });
+    
+    it('should update order', done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/a/b', now, 1, cb),
+        cb => omni.meta('/test/a/*', { key_order: 1 }, cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[2].should.read([ { key: '/test/a/b', key_order: 1 } ]);
+        done();
+      }));
+    });
+    
+    it('should maximize order', done => {
+      async.series([
+        cb => omni.meta('/test/a/*', { key_order: 1 }, cb),
+        cb => omni.meta('/test/*/b', { key_order: 2 }, cb),
+        cb => omni.add('tester', 'alice', '/test/a/a', now, 1, cb),
+        cb => omni.add('tester', 'alice', '/test/a/b', now, 1, cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[4].should.read([ { key: '/test/a/a', key_order: 1 }, { key: '/test/a/b', key_order: 2 } ]);
+        done();
+      }));
+    });
+    
+    it('should set comments', done => {
+      async.series([
+        cb => omni.meta('/test/a/*', { key_comment: 'y' }, cb),
+        cb => omni.meta('/test/*/b', { values_comment: 'z' }, cb),
+        cb => omni.add('tester', 'alice', '/test/a/b', now, 1, cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[3].should.read([ { key: '/test/a/b', key_comment: 'y', values_comment: 'z' } ]);
+        done();
+      }));
+    });
+    
+    it('should update comments', done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/a/b', now, 1, cb),
+        cb => omni.meta('/test/a/*', { key_comment: 'y' }, cb),
+        cb => omni.meta('/test/*/b', { values_comment: 'z' }, cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[3].should.read([ { key: '/test/a/b', key_comment: 'y', values_comment: 'z' } ]);
         done();
       }));
     });

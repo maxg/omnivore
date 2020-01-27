@@ -179,6 +179,7 @@ exports.createApp = function createApp(hosturl, omni) {
         async.auto({
           dirs: cb => omni.dirs(spec, cb),
           children: cb => omni.children(spec, cb),
+          grandchildren: cb => omni.grandchildren(spec, cb),
         }, (err, results) => {
           if (err) { return next(err); }
           res.render('user-dir', results);
