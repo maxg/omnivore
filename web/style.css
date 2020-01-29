@@ -28,7 +28,7 @@ body.errorpage {
   color: rgb(243, 255, 226);
 }
 
-body {
+body, .value .detail {
   font-family: 'IBM Plex Sans', sans-serif;
   font-weight: 400;
 }

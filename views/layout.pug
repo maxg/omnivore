@@ -1,5 +1,5 @@
 mixin key(key)
-  each dir in key.split(/(?=\/)/)
+  each dir in key.replace(/-grade$/, '').split(/(?=\/)/)
     if dir.length < 32
       span(data-unbreakable=true)= dir
     else

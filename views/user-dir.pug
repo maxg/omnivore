@@ -29,7 +29,11 @@ append content
                   +key(rel)
               td.value(data-type=types.which(subrow.value, types.value_types))
                 +value(subrow.value)
-                span.detail= subrow.values_comment
+                if subrow.value !== null
+                  span.detail= subrow.values_comment
+              td.late(data-on=subrow.penalty_applied)
+              td.visible(data-on=subrow.visible)
+              td.active(data-on=subrow.active)
   
   if children.length
     table
@@ -54,7 +58,8 @@ append content
                 .detail= row.key_comment
               td.value(data-type=types.which(row.value, types.value_types))
                 +value(row.value)
-                span.detail= row.values_comment
+                if row.value !== null
+                  span.detail= row.values_comment
               td.ts: +ts(row.ts)
               td.due.ts(data-value=row.deadline): +ts(row.deadline)
               td.late(data-on=row.penalty_applied)
