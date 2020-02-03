@@ -26,13 +26,13 @@ append content
   table.sheet
     thead
       tr
-      th
-      th
-      each key in keys
-        th.key: a(href=`/${course}/grades${key.key}`)
-          +arrow(key.inputs.length)
-          | #{key.key}
-          +arrow(key.outputs.length)
+        th
+        th
+        each key in keys
+          th.key: a(href=`/${course}/grades${key.key}`)
+            +arrow(key.inputs.length)
+            | #{key.key}
+            +arrow(key.outputs.length)
     tbody
       each row in rows
         tr(data-invalid=!types.is(row.username, 'username'))
