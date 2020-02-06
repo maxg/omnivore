@@ -24,9 +24,9 @@ mixin value(value)
       |  #{elt}
   else if types.is(value, 'string')
     each piece in value.split(/(\n)/)
-      - let mdlink = /^\[(https?:\/\/\S+)\]\((.+)\)$/.exec(piece)
+      - let mdlink = /^\[(.+)\]\((https?:\/\/\S+)\)$/.exec(piece)
       if mdlink
-        a(href=mdlink[1])= mdlink[2]
+        a(href=mdlink[2])= mdlink[1]
       else if /^https?:\/\/\S+$/.test(piece)
         a(href=piece)= piece
       else if piece === ''
