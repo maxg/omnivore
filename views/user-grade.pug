@@ -5,7 +5,10 @@ append head
 
 append content
   
-  p.key: +keynav(key)
+  p.key
+    +keynav(key)
+    if authstaff
+      span.staff: a.pivot(href=`/${course}/grades${key}`): span.root *
   
   if ! grade.visible
     p

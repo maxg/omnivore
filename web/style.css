@@ -132,6 +132,10 @@ td.ts {
   white-space: nowrap;
 }
 
+a.pivot { display: inline-block; margin: 0 20px; opacity: 0.5; }
+a.pivot::before { content: ' ['; }
+a.pivot::after { content: '] '; }
+
 a.history { display: inline-block; margin: 0 10px; }
 a.history::before { content: '[history]'; }
 
