@@ -318,41 +318,56 @@ CREATE TABLE IF NOT EXISTS computations (
     inputs LQUERY[] NOT NULL,
     compute TEXT NOT NULL
 );
+CREATE INDEX computations_output_gist ON computations USING gist(output);
 
+-- TODO written as a loop to avoid expensive rule expansion; change rules to triggers
 CREATE OR REPLACE FUNCTION computation_rules_new_key() RETURNS TRIGGER AS $$
+DECLARE
+    new_computation computations%ROWTYPE;
 BEGIN
-    INSERT INTO computations SELECT prefix || output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], compute FROM
-    (
-        SELECT prefix, output, input, ordinality, compute FROM
+    FOR new_computation IN
+        SELECT prefix || output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], compute FROM
         (
-            SELECT subpath(NEW.key,0,split) AS prefix, subpath(NEW.key,split) AS suffix
-            FROM generate_series(0,nlevel(NEW.key)-1) AS split
-        ) AS splits
-        JOIN computation_rules ON (CASE WHEN base IS NULL THEN prefix = '' ELSE prefix ~ base END AND suffix ? inputs),
-        LATERAL unnest(inputs) WITH ORDINALITY AS input
-    ) AS comp
-    WHERE NOT EXISTS (SELECT 1 FROM computations WHERE output = prefix || comp.output)
-    GROUP BY prefix, output, compute;
+            SELECT prefix, output, input, ordinality, compute FROM
+            (
+                SELECT subpath(NEW.key,0,split) AS prefix, subpath(NEW.key,split) AS suffix
+                FROM generate_series(0,nlevel(NEW.key)-1) AS split
+            ) AS splits
+            JOIN computation_rules ON (CASE WHEN base IS NULL THEN prefix = '' ELSE prefix ~ base END AND suffix ? inputs),
+            LATERAL unnest(inputs) WITH ORDINALITY AS input
+        ) AS comp
+        WHERE NOT EXISTS (SELECT 1 FROM computations WHERE output = prefix || comp.output)
+        GROUP BY prefix, output, compute
+    LOOP
+        INSERT INTO computations VALUES (new_computation.*);
+    END LOOP;
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER keys_on_insert_insert_computations AFTER INSERT ON keys
     FOR EACH ROW EXECUTE PROCEDURE computation_rules_new_key();
 
+-- TODO written as a loop to avoid expensive rule expansion; change rules to triggers
 CREATE OR REPLACE FUNCTION computation_rules_new_rule() RETURNS TRIGGER AS $$
+DECLARE
+    new_computation computations%ROWTYPE;
 BEGIN
-    INSERT INTO computations SELECT prefix || NEW.output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], NEW.compute FROM
-    (
-        SELECT DISTINCT subpath(key,0,split)::TEXT AS prefix, input, ordinality FROM
+    FOR new_computation IN
+        SELECT prefix || NEW.output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], NEW.compute FROM
         (
-            SELECT key, generate_series(0,nlevel(key)-1) AS split FROM
-            keys
-            WHERE key ~ ANY (SELECT (coalesce(NEW.base || '.', '') || unnest(NEW.inputs))::LQUERY)
-        ) AS splits,
-        LATERAL unnest(NEW.inputs::TEXT[]) WITH ORDINALITY AS input
-        WHERE CASE WHEN NEW.base IS NULL THEN split = 0 ELSE subpath(key,0,split) ~ NEW.base END AND subpath(key,split) ? NEW.inputs
-    ) AS comp
-    GROUP BY prefix;
+            SELECT DISTINCT subpath(key,0,split)::TEXT AS prefix, input, ordinality FROM
+            (
+                SELECT key, generate_series(0,nlevel(key)-1) AS split FROM
+                keys
+                WHERE key ~ ANY (SELECT (coalesce(NEW.base || '.', '') || unnest(NEW.inputs))::LQUERY)
+            ) AS splits,
+            LATERAL unnest(NEW.inputs::TEXT[]) WITH ORDINALITY AS input
+            WHERE CASE WHEN NEW.base IS NULL THEN split = 0 ELSE subpath(key,0,split) ~ NEW.base END AND subpath(key,split) ? NEW.inputs
+        ) AS comp
+        GROUP BY prefix
+    LOOP
+        INSERT INTO computations VALUES (new_computation.*);
+    END LOOP;
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
