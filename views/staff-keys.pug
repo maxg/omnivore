@@ -1,0 +1,21 @@
+extends layout
+
+append head
+  title #{query} - #{course} - Omnivore
+
+append content
+  
+  p.key
+    span.root ?
+    +key(query)
+    a.csv(href=`/${course}/grades${query}.csv`)
+  
+  table
+    tbody
+      each row in matches
+        tr(data-promoted=row.promotion > 0)
+          td.bullet(data-match=true)
+          td.key: a(href=`/${course}/grades${row.key}`): +key(row.key)
+          td.due.ts(data-value=row.deadline): +ts(row.deadline)
+          td.visible(data-on=row.visible)
+          td.active(data-on=row.active)

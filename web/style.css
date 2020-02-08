@@ -146,6 +146,7 @@ a.csv::before { content: '[csv]'; }
 .bullet::after { content: '-'; white-space: pre; }
 .bullet[data-dir]::after { content: '  /'; }
 .bullet[data-computed]::after { content: '>'; }
+.bullet[data-match]::after { content: '\2026'; position: relative; top: -.5ex; }
 
 .due[data-value]::before { content: 'due '; }
 

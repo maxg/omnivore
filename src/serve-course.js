@@ -258,6 +258,16 @@ exports.createApp = function createApp(hosturl, omni) {
     });
   });
   
+  app.get('/grades/:query(*)', staffonly, (req, res, next) => {
+    async.auto({
+      matches: cb => omni.findKeys(req.params.query, { hidden: true }, cb),
+    }, (err, results) => {
+      if (err) { return next(err); }
+      res.render('staff-keys', results);
+    });
+  });
+  app.get('/grades/:query(*)/', (req, res, next) => res.redirect(301, `/${omni.course}${req.path.slice(0, -1)}`));
+  
   app.get('/grades/:queries(*).csv', staffonly, (req, res, next) => {
     async.map(req.params.queries, (query, cb) => {
       omni.findKeys(query, { hidden: true }, cb);
