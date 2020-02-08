@@ -9,6 +9,60 @@ append content
     +keynav(key)
     a.csv(href=`/${course}/grades${key}.csv`)
   
+  div.explain
+    table
+      tbody
+        each row in keys
+          tr
+            td.due(data-value=row.deadline): +ts(row.deadline)
+            td= row.penalty_id
+            td.visible(data-on=row.visible)
+            td.active(data-on=row.active)
+          if row.inputs && row.inputs.length
+            tr: td(colspan=4) Computed from inputs:
+            each input in row.inputs
+              tr
+                td.indent.key(colspan=4): a(href=`/${course}/grades${input.replace(/%/g, '%25')}`): +key(path.relative(path.dirname(key), input))
+          if row.outputs && row.outputs.length
+            tr: td(colspan=4) Used to compute outputs:
+            each output in row.outputs
+              tr
+                td.indent.key(colspan=4): a(href=`/${course}/grades${output}`): +key(path.relative(path.dirname(key), output))
+    if rules
+      table
+        thead: tr: td Rules
+        tbody
+          tr: td: +plural(rules.creators.length, 'create agent')
+          for rule in rules.creators
+            tr #[td.indent= rule.agent] #[td] #[td= rule.add.join(', ')]
+          tr: td: +plural(rules.writers.length, 'write agent')
+          for rule in rules.writers
+            tr #[td.indent= rule.agent] #[td] #[td= rule.write.join(', ')]
+          tr: td: +plural(rules.active.length, 'active rule')
+          for rule in rules.active
+            tr #[td.indent: +ts(rule.after)] #[td] #[td= rule.keys]
+          tr: td: +plural(rules.visible.length, 'visible rule')
+          for rule in rules.visible
+            tr #[td.indent: +ts(rule.after)] #[td] #[td= rule.keys]
+          tr: td: +plural(rules.deadline.length, 'deadline rule')
+          for rule in rules.deadline
+            tr #[td.indent: +ts(rule.deadline)] #[td] #[td= rule.keys]
+            tr #[td.sep.text-right(colspan=2)= rule.penalty_id] #[td(title=rule.penalize)= rule.penalty_description]
+      if rules.computed.length
+        table
+          thead: tr: td(colspan=3) Output from computation
+            for rule in rules.computed
+              tr #[td.indent= rule.base] #[td.sep /] #[td(title=rule.compute)= path.relative('/', rule.output)]
+              for input, idx in rule.inputs
+                tr #[td.sep.text-right(colspan=2)= idx ? '' : 'from'] #[td= path.relative('/', input)]
+      if rules.computes.length
+        table
+          thead: tr: td(colspan=3) Input to #[+plural(rules.computes.length, 'computation')]
+            for rule in rules.computes
+              tr #[td.indent= rule.base] #[td.sep /] #[td(title=rule.compute)= path.relative('/', rule.output)]
+              for input, idx in rule.inputs
+                tr #[td.sep.text-right(colspan=2)= idx ? '' : 'from'] #[td= path.relative('/', input)]
+  
   table
     tbody
       each row in grades

@@ -441,6 +441,8 @@ describe('serve-course', function() {
         res.statusCode.should.eql(200);
         app.render.templates().should.eql([ 'staff-grades' ]);
         body.should.match(/test.*class-1.*nanoquiz.*alice.*10.*bob.*9/);
+        body.should.match(/<td[^>]*visible[^>]*data-on/);
+        body.should.match(/agent.*nanoquizzer/);
         done();
       }));
     });

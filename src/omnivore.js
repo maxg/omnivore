@@ -722,6 +722,67 @@ Omnivore.prototype.keys = client(
   ], done);
 }));
 
+Omnivore.prototype.rules = client(
+                           types.translate([ pg.Client, 'key' ], [ 'any' ],
+                           function _rules(client, key, done) {
+  let queries = {
+    creators: [
+      'SELECT agent, add FROM agents WHERE $1 ? add ORDER BY agent',
+      row => Object.assign(row, { add: types.convertOut(row.add, 'key_ltree_query_array') }),
+    ],
+    writers: [
+      'SELECT agent, write FROM agents WHERE $1 ? write ORDER BY agent',
+      row => Object.assign(row, { write: types.convertOut(row.write, 'key_ltree_query_array') }),
+    ],
+    active: [
+      'SELECT * FROM active_rules WHERE $1 ~ keys ORDER BY after',
+      row => Object.assign(row, { keys: types.convertOut(row.keys, 'key_ltree_query') }),
+    ],
+    visible: [
+      'SELECT * FROM visible_rules WHERE $1 ~ keys ORDER BY after',
+      row => Object.assign(row, { keys: types.convertOut(row.keys, 'key_ltree_query') }),
+    ],
+    deadline: [
+      'SELECT * FROM deadline_rules NATURAL JOIN penalties WHERE $1 ~ keys ORDER BY deadline',
+      row => Object.assign(row, { keys: types.convertOut(row.keys, 'key_ltree_query') }),
+    ],
+    rules: [
+      'SELECT * FROM key_rules WHERE $1 ~ keys',
+      row => Object.assign(row, { keys: types.convertOut(row.keys, 'key_ltree_query') }),
+    ],
+    computed: [
+      `SELECT * FROM computation_rules WHERE $1 ~ (CASE WHEN base IS NULL THEN '' ELSE base::TEXT || '.' END || output::TEXT)::LQUERY`,
+      row => Object.assign(row, {
+        base: types.convertOut(row.base, 'key_ltree_query'),
+        output: types.convertOut(row.output, 'key'),
+        inputs: types.convertOut(row.inputs, 'key_ltree_query_array'),
+      }),
+    ],
+    computes: [
+      `SELECT computation_rules.* FROM computation_rules, LATERAL unnest(inputs) AS input
+       WHERE $1 ~ (CASE WHEN base IS NULL THEN '' ELSE base::TEXT || '.' END || input::TEXT)::LQUERY
+       ORDER BY CASE WHEN base IS NULL THEN '' ELSE base::TEXT || '.' END || output::TEXT`,
+      row => Object.assign(row, {
+        base: types.convertOut(row.base, 'key_ltree_query'),
+        output: types.convertOut(row.output, 'key'),
+        inputs: types.convertOut(row.inputs, 'key_ltree_query_array'),
+      }),
+    ],
+  };
+  async.auto(Object.fromEntries(Object.entries(queries).map(([ rule, [ query, convert ] ]) => {
+    return [ rule, cb => async.waterfall([
+      cb => client.logQuery({
+        name: `rules-select--${rule}`,
+        text: query,
+        types: [ types.pg.LTREE ],
+        values: [ key ],
+      }, cb),
+      (result, cb) => cb(null, result.rows),
+      (rows, cb) => cb(null, rows.map(convert)),
+    ], cb) ];
+  })), done);
+}));
+
 // add an active rule
 Omnivore.prototype.active = client(transaction(
                             types.translate([ pg.Client, 'key', Date ], [ 'any' ],

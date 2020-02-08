@@ -1,4 +1,4 @@
-@import url(https://fonts.googleapis.com/css?family=IBM+Plex+Sans|IBM+Plex+Mono);
+@import url(https://fonts.googleapis.com/css?family=IBM+Plex+Sans:400,700|IBM+Plex+Mono);
 
 /* header/footer */
 html {
@@ -116,7 +116,7 @@ table tr td {
 table tr td:not(:empty) {
   padding: 2px 10px 2px 10px;
 }
-table tr td:first-child {
+table tr td:first-child:not(.indent) {
   padding-left: 0;
 }
 
@@ -148,15 +148,18 @@ a.csv::before { content: '[csv]'; }
 .bullet[data-computed]::after { content: '>'; }
 .bullet[data-match]::after { content: '\2026'; position: relative; top: -.5ex; }
 
+.explain .due::before { content: '[no deadline]\a0'; }
 .due[data-value]::before { content: 'due '; }
 
 .late[data-on]::before { content: '[late] '; }
 
 .active::before { content: '[inactive] '; }
 .active[data-on]::before { content: ''; }
+.explain .active[data-on]::before { content: '[active]\a0'; }
 
 .visible::before { content: '[hidden] '; }
 .visible[data-on]::before { content: ''; }
+.explain .visible[data-on]::before { content: '[visible]\a0'; }
 
 .override[data-on]::before { content: '[override] '; }
 
@@ -212,6 +215,36 @@ table.sheet td[data-type=string] {
   min-width: 10em;
   background: rgba(22, 149, 163, 0.1);
 }
+
+.explain {
+  float: right;
+  background: rgb(248, 242, 220);
+  padding: 2px;
+}
+
+.explain table {
+  font-size: 15px;
+  position: relative;
+}
+.explain table:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  background: linear-gradient(to right, rgba(248, 242, 220, 0), rgb(248, 242, 220));
+}
+
+.explain table td {
+  white-space: nowrap;
+  overflow: scroll;
+}
+.explain table td:last-child {
+  padding-right: 20px;
+  max-width: 25em;
+}
+.explain table td.sep { padding: 0; }
 
 .nom:after { content: '\2014'; }
 .nom.nom-nom:after { content: '<'; }

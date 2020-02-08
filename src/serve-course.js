@@ -227,6 +227,8 @@ exports.createApp = function createApp(hosturl, omni) {
       if (grades.length) {
         async.auto({
           grades: cb => cb(null, grades),
+          keys: cb => omni.keys([ req.params.key ], cb),
+          rules: cb => omni.rules(req.params.key, cb),
         }, (err, results) => {
           if (err) { return next(err); }
           res.render('staff-grades', results);

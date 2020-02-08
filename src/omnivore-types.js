@@ -59,6 +59,8 @@ xtype.ext.registerType({
   key_ltree_query: { definition: { validator: val => xtype.isString(val) && key_ltree_query_regex.test(val) } },
   maybe_key: { definition: 'undefined, key' },
   key_array: { definition: { validator: val => xtype.isArray(val) && xtype.all.isKey(val) } },
+  key_path_query_array:  { definition: { validator: val => xtype.isArray(val) && xtype.all.isKeyPathQuery(val) } },
+  key_ltree_query_array: { definition: { validator: val => xtype.isArray(val) && xtype.all.isKeyLtreeQuery(val) } },
   timestamp: { definition: { validator: val => xtype.isString(val) && timestamp_regex.test(val) } },
   spec:      { definition: { validator: val => {
     return xtype.isObject(val) && xtype.isMaybeUsername(val.username) && xtype.isMaybeKey(val.key);
@@ -102,6 +104,8 @@ const convertIn = exports.convertIn = function convertIn(val, type) {
       return Object.assign({}, val, { key: convertIn(val.key, 'key') });
     case 'row_array':
       return val.map(row => convertIn(row, 'row'));
+    case 'key_path_query_array':
+      return val.map(row => convertIn(row, 'key_path_query'));
     case 'spec':
       return val && val.key ? Object.assign({}, val, { key: convertIn(val.key, 'key') }) : val;
     default:
@@ -126,6 +130,8 @@ const convertOut = exports.convertOut = function convertOut(val, type) {
       return val && val.key ? Object.assign({}, val, { key: convertOut(val.key, 'key') }) : val;
     case 'row_array':
       return val ? val.map(row => convertOut(row, 'row')) : val;
+    case 'key_ltree_query_array':
+      return val ? val.map(row => convertOut(row, 'key_ltree_query')) : val;
     default:
       return val;
   }

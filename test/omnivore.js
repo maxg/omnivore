@@ -1092,6 +1092,55 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('#rules()', () => {
+    
+    let penalty_id = 'no-credit';
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.active('/test/**', now, cb),
+        cb => omni.visible('/test/**', now, cb),
+        cb => omni.penalty(penalty_id, 'No credit', () => 0, cb),
+        cb => omni.deadline('/test/**', now, penalty_id, cb),
+        cb => omni.meta('/test/*/b', { key_order: 2 }, cb),
+        cb => omni.compute('/test/*', 'b', [ 'a' ], () => null, cb),
+        cb => omni.compute('/test/*', 'c', [ 'b' ], () => null, cb),
+      ], done);
+    });
+    
+    it('should return agent rules', done => {
+      omni.rules('/test/q/b', bail(done, result => {
+        result.should.read({
+          creators: [ { agent: 'tester' } ],
+          writers: [ { agent: 'tester' } ],
+        });
+        done();
+      }));
+    });
+    
+    it('should return key rules', done => {
+      omni.rules('/test/q/b', bail(done, result => {
+        result.should.read({
+          active: [ { keys: '/test/**' } ],
+          visible: [ { keys: '/test/**' } ],
+          deadline: [ { keys: '/test/**', penalty_id: 'no-credit' } ],
+          rules: [ { keys: '/test/*/b', key_order: 2 } ],
+        });
+        done();
+      }));
+    });
+    
+    it('should return computation rules', done => {
+      omni.rules('/test/q/b', bail(done, result => {
+        result.should.read({
+          computed: [ { base: '/test/*', output: '/b' } ],
+          computes: [ { base: '/test/*', output: '/c' } ],
+        });
+        done();
+      }));
+    });
+  });
+  
   describe('#active()', () => {
     
     beforeEach(done => {
