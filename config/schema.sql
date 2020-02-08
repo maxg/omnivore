@@ -388,9 +388,9 @@ CREATE OR REPLACE RULE keys_on_insert_delete_stale_computed AS ON INSERT TO keys
           OR EXISTS(SELECT 1 FROM active_rules WHERE NEW.key ~ keys AND after <= CURRENT_TIMESTAMP)
     DO DELETE FROM current_computed WHERE key IN (
         WITH RECURSIVE all_computations AS (
-            SELECT * FROM computations WHERE NEW.key ? inputs
+            SELECT output FROM computations WHERE NEW.key ? inputs
             UNION ALL
-            SELECT c.* FROM computations c, all_computations a WHERE a.output ? c.inputs
+            SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
         ) SELECT output FROM all_computations
     );
 
@@ -398,9 +398,9 @@ CREATE OR REPLACE RULE keys_on_update_delete_stale_computed AS ON UPDATE TO keys
     WHERE NEW.active <> OLD.active
     DO DELETE FROM current_computed WHERE key IN (
         WITH RECURSIVE all_computations AS (
-            SELECT * FROM computations WHERE NEW.key ? inputs
+            SELECT output FROM computations WHERE NEW.key ? inputs
             UNION ALL
-            SELECT c.* FROM computations c, all_computations a WHERE a.output ? c.inputs
+            SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
         ) SELECT output FROM all_computations
     );
 
@@ -408,9 +408,9 @@ CREATE OR REPLACE RULE keys_on_delete_delete_stale_computed AS ON DELETE TO keys
     WHERE OLD.active
     DO DELETE FROM current_computed WHERE key IN (
         WITH RECURSIVE all_computations AS (
-            SELECT * FROM computations WHERE OLD.key ? inputs
+            SELECT output FROM computations WHERE OLD.key ? inputs
             UNION ALL
-            SELECT c.* FROM computations c, all_computations a WHERE a.output ? c.inputs
+            SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
         ) SELECT output FROM all_computations
     );
 
@@ -418,9 +418,9 @@ CREATE OR REPLACE RULE raw_data_on_insert_delete_stale_computed AS ON INSERT TO 
     WHERE EXISTS (SELECT 1 FROM keys WHERE key = NEW.key AND active)
     DO DELETE FROM current_computed WHERE username = NEW.username AND key IN (
         WITH RECURSIVE all_computations AS (
-            SELECT * FROM computations WHERE NEW.key ? inputs
+            SELECT output FROM computations WHERE NEW.key ? inputs
             UNION ALL
-            SELECT c.* FROM computations c, all_computations a WHERE a.output ? c.inputs
+            SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
         ) SELECT output FROM all_computations
     );
 
@@ -454,21 +454,21 @@ CREATE TRIGGER current_computed_on_delete_delete_stale_computed AFTER DELETE ON 
 CREATE OR REPLACE RULE computations_on_insert_delete_stale_computed AS ON INSERT TO computations
     DO DELETE FROM current_computed WHERE key IN (
         WITH RECURSIVE all_computations AS (
-            SELECT NEW.* UNION ALL SELECT c.* FROM computations c, all_computations a WHERE a.output ? c.inputs
+            SELECT NEW.output UNION ALL SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
         ) SELECT output FROM all_computations
     );
 
 CREATE OR REPLACE RULE computations_on_update_delete_stale_computed AS ON UPDATE TO computations
     DO DELETE FROM current_computed WHERE key IN (
         WITH RECURSIVE all_computations AS (
-            SELECT NEW.* UNION ALL SELECT c.* FROM computations c, all_computations a WHERE a.output ? c.inputs
+            SELECT NEW.output UNION ALL SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
         ) SELECT output FROM all_computations
     );
 
 CREATE OR REPLACE RULE computations_on_delete_delete_stale_computed AS ON DELETE TO computations
     DO DELETE FROM current_computed WHERE key IN (
         WITH RECURSIVE all_computations AS (
-            SELECT OLD.* UNION ALL SELECT c.* FROM computations c, all_computations a WHERE a.output ? c.inputs
+            SELECT OLD.output UNION ALL SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
         ) SELECT output FROM all_computations
     );
 
