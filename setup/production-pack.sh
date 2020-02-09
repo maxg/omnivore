@@ -29,6 +29,15 @@ for port in 80 443; do
   chmod u+x /etc/authbind/byport/$port
 done
 
+# Install AWS EFS mount helper
+(
+  cd /tmp
+  git clone https://github.com/aws/efs-utils
+  cd efs-utils
+  ./build-deb.sh
+  apt-get install -y ./build/amazon-efs-utils*deb
+)
+
 # Install Node.js packages
 npm install
 

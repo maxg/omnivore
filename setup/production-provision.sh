@@ -6,6 +6,7 @@ APP=$1
 NAME=$2
 HOST=$3
 CONTACT=$4
+TLS_FS=$5
 
 # Wait for instance configuration to finish
 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do sleep 2; done
@@ -40,6 +41,10 @@ const password = '$PG_APP_PASSWORD';
 $oids
 // ---
 $(cat env-production.js)" > env-production.js
+
+# Mount TLS filesystem
+sudo tee --append /etc/fstab <<< "$TLS_FS:/ /etc/letsencrypt efs tls,_netdev 0 0"
+sudo mount /etc/letsencrypt
 
 # Start Certbot
 sudo certbot certonly --standalone --non-interactive --agree-tos --email $CONTACT --domains $HOST
