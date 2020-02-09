@@ -515,38 +515,6 @@ describe('serve-course', function() {
     });
   });
   
-  describe('GET /grades/:query', () => {
-    
-    let url = '/grades/test/*/nanoquiz';
-    
-    it('should require staff', done => {
-      req.headers({ [x_auth_user]: 'alice' }).get(url, bail(done, (res, body) => {
-        res.statusCode.should.eql(200);
-        app.render.templates().should.eql([ '401' ]);
-        body.should.match(/permission denied/);
-        done();
-      }));
-    });
-    
-    it('should render query', done => {
-      req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
-        res.statusCode.should.eql(200);
-        app.render.templates().should.eql([ 'staff-keys' ]);
-        body.should.match(/<a.*test.*class-1.*nanoquiz.*test.*class-1.*nanoquiz.*<a.*test.*class-2.*nanoquiz.*test.*class-2.*nanoquiz/);
-        done();
-      }));
-    });
-    
-    it('w/ / should redirect to query', done => {
-      req.headers({ [x_auth_user]: 'staffer' }).get(`${url}/`, bail(done, (res, body) => {
-        res.statusCode.should.eql(301);
-        app.render.templates().should.eql([]);
-        res.headers.location.should.eql(`/${course}${url}`);
-        done();
-      }));
-    });
-  });
-  
   describe('GET /grades/:queries.csv', () => {
     
     let single = '/grades/*/*/nanoquiz.csv';
@@ -603,6 +571,38 @@ describe('serve-course', function() {
           ]);
           done(err);
         });
+      }));
+    });
+  });
+  
+  describe('GET /grades/:query', () => {
+    
+    let url = '/grades/test/*/nanoquiz';
+    
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
+    
+    it('should render query', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'staff-keys' ]);
+        body.should.match(/<a.*test.*class-1.*nanoquiz.*test.*class-1.*nanoquiz.*<a.*test.*class-2.*nanoquiz.*test.*class-2.*nanoquiz/);
+        done();
+      }));
+    });
+    
+    it('w/ / should redirect to query', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(`${url}/`, bail(done, (res, body) => {
+        res.statusCode.should.eql(301);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}${url}`);
+        done();
       }));
     });
   });
