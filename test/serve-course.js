@@ -460,7 +460,7 @@ describe('serve-course', function() {
   describe('GET /grades/:keys.csv', () => {
     
     let single_url = '/grades/test/class-1/nanoquiz.csv';
-    let multi_url = '/grades/test/class-1/nanoquiz,/test/class-2/nanoquiz.csv';
+    let multi_url = '/grades/test/class-2/nanoquiz,/test/class-1/nanoquiz.csv';
     
     it('should require staff', done => {
       req.headers({ [x_auth_user]: 'alice' }).get(single_url, bail(done, (res, body) => {
@@ -492,9 +492,9 @@ describe('serve-course', function() {
         let date = omnivore.types.dateTimeString(new Date());
         csv.parse(body, { relax_column_count: true }, (err, sheet) => {
           sheet.should.read([
-            [ 'username', '/test/class-1/nanoquiz', '/test/class-2/nanoquiz', `exported ${date} by staffer` ],
-            [ 'alice', '10', '8' ],
-            [ 'bob', '9', '' ],
+            [ 'username', '/test/class-2/nanoquiz', '/test/class-1/nanoquiz', `exported ${date} by staffer` ],
+            [ 'alice', '8', '10' ],
+            [ 'bob', '', '9' ],
           ]);
           done(err);
         });
@@ -506,8 +506,8 @@ describe('serve-course', function() {
         res.statusCode.should.eql(200);
         csv.parse(body, { relax_column_count: true }, (err, sheet) => {
           sheet.should.read([
-            [ 'username', '/test/class-1/nanoquiz', '/test/class-2/nanoquiz', /exported/ ],
-            [ 'alice', '10', '8' ],
+            [ 'username', '/test/class-2/nanoquiz', '/test/class-1/nanoquiz', /exported/ ],
+            [ 'alice', '8', '10' ],
           ]);
           done(err);
         });
@@ -562,30 +562,47 @@ describe('serve-course', function() {
       }));
     });
     
-    it('should redirect single query to CSV', done => {
+    it('should render single-query CSV', done => {
       req.headers({ [x_auth_user]: 'staffer' }).get(single, bail(done, (res, body) => {
-        res.statusCode.should.eql(303);
-        app.render.templates().should.eql([]);
-        res.headers.location.should.eql(`/${course}${expanded}`);
-        done();
+        res.statusCode.should.eql(200);
+        let date = omnivore.types.dateTimeString(new Date());
+        csv.parse(body, { relax_column_count: true }, (err, sheet) => {
+          sheet.should.read([
+            [ 'username', '/test/class-1/nanoquiz', '/test/class-2/nanoquiz', `exported ${date} by staffer` ],
+            [ 'alice', '10', '8' ],
+            [ 'bob', '9', '' ],
+          ]);
+          done(err);
+        });
       }));
     });
     
-    it('should redirect multiple queries to CSV', done => {
+    it('should render multi-query CSV', done => {
       req.headers({ [x_auth_user]: 'staffer' }).get(multiple, bail(done, (res, body) => {
-        res.statusCode.should.eql(303);
-        app.render.templates().should.eql([]);
-        res.headers.location.should.eql(`/${course}${expanded}`);
-        done();
+        res.statusCode.should.eql(200);
+        let date = omnivore.types.dateTimeString(new Date());
+        csv.parse(body, { relax_column_count: true }, (err, sheet) => {
+          sheet.should.read([
+            [ 'username', '/test/class-1/nanoquiz', '/test/class-2/nanoquiz', `exported ${date} by staffer` ],
+            [ 'alice', '10', '8' ],
+            [ 'bob', '9', '' ],
+          ]);
+          done(err);
+        });
       }));
     });
     
-    it('should include options', done => {
+    it('should restrict to roster', done => {
       req.headers({ [x_auth_user]: 'staffer' }).get(single + '?roster=1', bail(done, (res, body) => {
-        res.statusCode.should.eql(303);
-        app.render.templates().should.eql([]);
-        res.headers.location.should.endWith('.csv?roster=1');
-        done();
+        res.statusCode.should.eql(200);
+        let date = omnivore.types.dateTimeString(new Date());
+        csv.parse(body, { relax_column_count: true }, (err, sheet) => {
+          sheet.should.read([
+            [ 'username', '/test/class-1/nanoquiz', '/test/class-2/nanoquiz', /exported/ ],
+            [ 'alice', '10', '8' ],
+          ]);
+          done(err);
+        });
       }));
     });
   });

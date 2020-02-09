@@ -61,7 +61,7 @@ exports.createApp = function createApp(hosturl, omni) {
   app.param('keys', (req, res, next, keys) => {
     keys = ('/' + keys).split(',');
     if ( ! keys.every(key => omnivore.types.is(key, 'key_path'))) { return next('route'); }
-    req.params.keys = keys;
+    res.locals.keys = req.params.keys = keys;
     next();
   });
   
@@ -247,14 +247,24 @@ exports.createApp = function createApp(hosturl, omni) {
   app.get('/grades/:key(*)/', (req, res, next) => res.redirect(301, `/${omni.course}${req.path.slice(0, -1)}`));
   app.get('/grades', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
   
-  app.get('/grades/:keys(*).csv', staffonly, (req, res, next) => {
-    let prefix = omnivore.types.common(req.params.keys).slice(1);
+  app.get('/grades/:keys(*).csv', (req, res, next) => next());
+  app.get('/grades/:queries(*).csv', staffonly, (req, res, next) => {
+    if (res.locals.keys) { return next(); }
+    async.map(req.params.queries, (query, cb) => {
+      omni.findKeys(query, { hidden: true }, cb);
+    }, (err, rowarrs) => {
+      if (err) { return next(err); }
+      res.locals.keys = rowarrs.reduce((a, b) => a.concat(b.map(row => row.key)), []).sort();
+      next();
+    });
+  }, (req, res, next) => {
+    let prefix = omnivore.types.common(res.locals.keys).slice(1);
     let filename = `${omni.course}-${prefix || 'grades'}.csv`.replace(/\//g, '-');
     let spec = { only_roster: !! req.query.roster, hidden: true };
-    omni.multiget(req.params.keys, spec, (err, rows) => {
+    omni.multiget(res.locals.keys, spec, (err, rows) => {
       if (err) { return next(err); }
       res.attachment(filename);
-      omnivore.csv.stringify(req.params.keys, rows, [
+      omnivore.csv.stringify(res.locals.keys, rows, [
         `exported ${omnivore.types.dateTimeString(new Date())} by ${res.locals.authuser}`
       ]).pipe(res);
     });
@@ -269,18 +279,6 @@ exports.createApp = function createApp(hosturl, omni) {
     });
   });
   app.get('/grades/:query(*)/', (req, res, next) => res.redirect(301, `/${omni.course}${req.path.slice(0, -1)}`));
-  
-  app.get('/grades/:queries(*).csv', staffonly, (req, res, next) => {
-    async.map(req.params.queries, (query, cb) => {
-      omni.findKeys(query, { hidden: true }, cb);
-    }, (err, rowarrs) => {
-      if (err) { return next(err); }
-      let keys = rowarrs.reduce((a, b) => a.concat(b.map(row => row.key)), []);
-      keys.sort();
-      let options = req.url.substr(`${req.url}?`.indexOf('?'));
-      res.redirect(303, `/${omni.course}/grades${keys}.csv${options}`);
-    });
-  });
   
   const pending_uploads = new Map();
   
