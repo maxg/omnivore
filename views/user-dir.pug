@@ -8,32 +8,18 @@ append content
   p.key: +keynav(key)
   
   if dirs.length
+    - let subdirs = grandchildren.map(subrow => path.dirname(path.relative(key, subrow.key)))
+    - let compact = new Set(subdirs).size === subdirs.length
     table
       tbody
         each row in dirs
           tr
             td.bullet(data-dir=true)
             td.key: a(href=`/${course}/u/${username}${row.key}`): +key(path.relative(key, row.key))
+            if compact && grandchildren.length && grandchildren[0].key.startsWith(row.key)
+              +grandchild-tds(row, grandchildren.shift())
           while grandchildren.length && grandchildren[0].key.startsWith(row.key)
-            - let subrow = grandchildren.shift()
-            tr
-              td
-              td.bullet(data-computed=subrow.computed)
-              td.key
-                - let rel = path.relative(row.key, subrow.key)
-                if path.dirname(rel) !== '.'
-                  a(href=`/${course}/u/${username}${path.dirname(subrow.key)}`): +key(path.dirname(rel))
-                  | /
-                  +key(path.basename(subrow.key))
-                else
-                  +key(rel)
-              td.value(data-type=types.which(subrow.value, types.value_types))
-                +value(subrow.value)
-                if subrow.value !== null
-                  span.detail= subrow.values_comment
-              td.late(data-on=subrow.penalty_applied)
-              td.visible(data-on=subrow.visible)
-              td.active(data-on=subrow.active)
+            tr: +grandchild-tds(row, grandchildren.shift())
   
   if children.length
     table
@@ -42,29 +28,54 @@ append content
           if row.key_order && idx > 0 && (row.key_order - children[idx-1].key_order) >= 10
             tr.spacer: td
           if row.key.endsWith('-comment') && idx > 0 && row.key.startsWith(children[idx-1].key)
-            tr.detail
-              td.bullet(data-computed=row.computed)
-              td.key
-              td.value(data-type=types.which(row.value, types.value_types)): +value(row.value)
-              td
-              td
-              td
-              td.visible(data-on=row.visible)
-              td.active(data-on=row.active)
-              td: a(href=`/${course}/u/${username}${row.key}`) ...
+            +comment-tr(row)
           else
-            tr(data-promoted=row.promotion > 0)
-              td.bullet(data-computed=row.computed)
-              td.key
-                +key(path.relative(key, row.key))
-                .detail= row.key_comment
-              td.value(data-type=types.which(row.value, types.value_types))
-                +value(row.value)
-                if row.value !== null
-                  span.detail= row.values_comment
-              td.ts: +ts(row.ts)
-              td.due.ts(data-value=row.deadline): +ts(row.deadline)
-              td.late(data-on=row.penalty_applied)
-              td.visible(data-on=row.visible)
-              td.active(data-on=row.active)
-              td: a(href=`/${course}/u/${username}${row.key}`) ...
+            +data-tr(row)
+
+mixin grandchild-tds(row, subrow)
+  td
+  td.bullet(data-computed=subrow.computed)
+  td.key
+    - let rel = path.relative(row.key, subrow.key)
+    if path.dirname(rel) !== '.'
+      a(href=`/${course}/u/${username}${path.dirname(subrow.key)}`): +key(path.dirname(rel))
+      | /
+      +key(path.basename(subrow.key))
+    else
+      +key(rel)
+  td.value(data-type=types.which(subrow.value, types.value_types))
+    +value(subrow.value)
+    if subrow.value !== null
+      span.detail= subrow.values_comment
+  td.late(data-on=subrow.penalty_applied)
+  td.visible(data-on=subrow.visible)
+  td.active(data-on=subrow.active)
+
+mixin comment-tr(row)
+  tr.detail
+    td.bullet(data-computed=row.computed)
+    td.key
+    td.value(data-type=types.which(row.value, types.value_types)): +value(row.value)
+    td
+    td
+    td
+    td.visible(data-on=row.visible)
+    td.active(data-on=row.active)
+    td: a(href=`/${course}/u/${username}${row.key}`) ...
+
+mixin data-tr(row)
+  tr(data-promoted=row.promotion > 0)
+    td.bullet(data-computed=row.computed)
+    td.key
+      +key(path.relative(key, row.key))
+      .detail= row.key_comment
+    td.value(data-type=types.which(row.value, types.value_types))
+      +value(row.value)
+      if row.value !== null
+        span.detail= row.values_comment
+    td.ts: +ts(row.ts)
+    td.due.ts(data-value=row.deadline): +ts(row.deadline)
+    td.late(data-on=row.penalty_applied)
+    td.visible(data-on=row.visible)
+    td.active(data-on=row.active)
+    td: a(href=`/${course}/u/${username}${row.key}`) ...
