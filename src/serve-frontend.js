@@ -41,7 +41,10 @@ async function createAppServer(course) {
   app.set('x-powered-by', false);
   
   app.use(favicon('web/favicon.ico'));
-  app.use('/web', express.static('web'));
+  let statics = express.static('web');
+  app.get('/apple-touch-icon.png', statics)
+  app.use('/web', statics);
+  
   app.use(session({
     name: 'omnivore', secret: config.web_secret,
     secure: true, httpOnly: true, sameSite: 'lax', signed: true, overwrite: true,
