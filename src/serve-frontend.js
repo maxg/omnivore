@@ -67,7 +67,12 @@ async function createAppServer(course) {
     next();
   });
   
-  app.get('/', (req, res) => res.render('root'));
+  app.get('/', (req, res) => {
+    if (req.session.last) {
+      return res.redirect(req.session.last);
+    }
+    res.render('root');
+  });
   app.use('/:clazz/:semester', authenticate, course);
   app.all('*', (req, res) => res.status(404).render('404'));
   app.use((err, req, res, next) => {
@@ -91,6 +96,7 @@ async function createAppServer(course) {
       return res.redirect('/auth');
     }
     res.set(serve_course.x_auth_user, req.user);
+    req.session.last = res.locals.course;
     next();
   }
   
