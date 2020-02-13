@@ -119,6 +119,9 @@ table tr td:not(:empty) {
 table tr td:first-child:not(.indent) {
   padding-left: 0;
 }
+table tr.spacer td {
+  padding: 10px 0 0 0;
+}
 
 span[data-breakable] {
   word-break: break-all;

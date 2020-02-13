@@ -39,6 +39,8 @@ append content
     table
       tbody
         each row, idx in children
+          if row.key_order && idx > 0 && (row.key_order - children[idx-1].key_order) >= 10
+            tr.spacer: td
           if row.key.endsWith('-comment') && idx > 0 && row.key.startsWith(children[idx-1].key)
             tr.detail
               td.bullet(data-computed=row.computed)
