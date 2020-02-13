@@ -32,7 +32,7 @@ apt-get install -y unzip
 # Pgweb
 pgweb_tag=$(
   curl --silent --head https://github.com/sosedoff/pgweb/releases/latest |
-    grep '^Location: ' | grep -o '[^/]*$' | tr -d '\r'
+    grep -i '^Location: ' | grep -o '[^/]*$' | tr -d '\r'
 )
 pgweb_zip=pgweb_linux_amd64.zip
 (
