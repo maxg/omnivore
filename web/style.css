@@ -105,9 +105,13 @@ textarea.form-control {
   width: auto;
 }
 
+p {
+  margin-bottom: 20px;
+}
+
 table {
   border-collapse: collapse;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
 }
 table tr td {
   padding: 2px 0 2px 0;
@@ -120,7 +124,7 @@ table tr td:first-child:not(.indent) {
   padding-left: 0;
 }
 table tr.spacer td {
-  padding: 10px 0 0 0;
+  padding: 20px 0 0 0;
 }
 
 span[data-breakable] {
