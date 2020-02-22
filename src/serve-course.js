@@ -438,7 +438,7 @@ if (require.main === module) {
   
   setInterval(() => {
     omni.cron(err => { if (err) { log.error({ err }, 'cron'); } });
-  }, 1000 * 60 * 60);
+  }, 1000 * 60 * 10);
   
   let server = http.createServer(exports.createApp(hosturl, omni));
   server.timeout = 0;
