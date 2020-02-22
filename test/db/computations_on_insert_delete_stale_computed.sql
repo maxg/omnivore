@@ -4,7 +4,7 @@ INSERT INTO current_computed VALUES ('alice', 'test.beta', t(), '42');
 SELECT * INTO STRICT result FROM current_computed WHERE key = 'test.beta';
 PERFORM assert(FOUND);
 
-INSERT INTO computations VALUES ('test.beta', ARRAY[LQUERY 'test.a*'], '(a) -> a');
+INSERT INTO computations VALUES ('test', 'test.beta', ARRAY[LQUERY 'test.a*'], '(a) -> a');
 
 SELECT * INTO result FROM current_computed WHERE key = 'test.beta';
 PERFORM assert(NOT FOUND, result::TEXT);

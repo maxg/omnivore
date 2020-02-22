@@ -319,10 +319,13 @@ CREATE TABLE IF NOT EXISTS computation_rules (
 );
 
 CREATE TABLE IF NOT EXISTS computations (
+    base LTREE NOT NULL,
     output LTREE NOT NULL PRIMARY KEY REFERENCES keys,
     inputs LQUERY[] NOT NULL,
-    compute TEXT NOT NULL
+    compute TEXT NOT NULL,
+    CHECK (base @> output)
 );
+CREATE INDEX computations_base_gist ON computations USING gist(base);
 CREATE INDEX computations_output_gist ON computations USING gist(output);
 
 -- TODO written as a loop to avoid expensive rule expansion; change rules to triggers
@@ -331,7 +334,7 @@ DECLARE
     new_computation computations%ROWTYPE;
 BEGIN
     FOR new_computation IN
-        SELECT prefix || output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], compute FROM
+        SELECT prefix, prefix || output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], compute FROM
         (
             SELECT prefix, output, input, ordinality, compute FROM
             (
@@ -358,7 +361,7 @@ DECLARE
     new_computation computations%ROWTYPE;
 BEGIN
     FOR new_computation IN
-        SELECT prefix || NEW.output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], NEW.compute FROM
+        SELECT prefix, prefix || NEW.output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], NEW.compute FROM
         (
             SELECT DISTINCT subpath(key,0,split)::TEXT AS prefix, input, ordinality FROM
             (
@@ -405,7 +408,7 @@ CREATE TRIGGER computations_on_insert_ensure_key BEFORE INSERT ON computations
 
 CREATE OR REPLACE FUNCTION new_key_delete_stale_computed() RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE NEW.key ? inputs);
+    DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE base @> NEW.key AND NEW.key ? inputs);
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -413,7 +416,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION new_data_delete_stale_computed() RETURNS TRIGGER AS $$
 BEGIN
     DELETE FROM current_computed WHERE EXISTS(SELECT 1 FROM keys WHERE key = NEW.key AND active)
-                                       AND key IN (SELECT output FROM computations WHERE NEW.key ? inputs)
+                                       AND key IN (SELECT output FROM computations WHERE base @> NEW.key AND NEW.key ? inputs)
                                        AND username = NEW.username;
     RETURN NULL;
 END;
@@ -422,7 +425,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION old_data_delete_stale_computed() RETURNS TRIGGER AS $$
 BEGIN
     DELETE FROM current_computed WHERE EXISTS(SELECT 1 FROM keys WHERE key = OLD.key AND active)
-                                       AND key IN (SELECT output FROM computations WHERE OLD.key ? inputs)
+                                       AND key IN (SELECT output FROM computations WHERE base @> OLD.key AND OLD.key ? inputs)
                                        AND username = OLD.username;
     RETURN NULL;
 END;
@@ -436,7 +439,7 @@ CREATE TRIGGER keys_on_update_delete_stale_computed AFTER UPDATE ON keys
 
 CREATE OR REPLACE RULE keys_on_delete_delete_stale_computed AS ON DELETE TO keys
     WHERE OLD.active
-    DO DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE OLD.key ? inputs);
+    DO DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE base @> OLD.key AND OLD.key ? inputs);
 
 CREATE TRIGGER raw_data_on_insert_delete_stale_computed AFTER INSERT ON raw_data
     FOR EACH ROW EXECUTE PROCEDURE new_data_delete_stale_computed();
