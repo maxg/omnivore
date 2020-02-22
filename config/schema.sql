@@ -91,9 +91,11 @@ CREATE TRIGGER keys_on_insert_apply_rules BEFORE INSERT ON keys
     FOR EACH ROW EXECUTE PROCEDURE keys_apply_rules();
 
 CREATE OR REPLACE RULE active_rules_on_insert_update AS ON INSERT TO active_rules
-    DO UPDATE keys SET active = NEW.after <= CURRENT_TIMESTAMP WHERE key ~ NEW.keys;
+    WHERE NEW.after <= CURRENT_TIMESTAMP
+    DO UPDATE keys SET active = TRUE WHERE key ~ NEW.keys;
 
 CREATE OR REPLACE RULE active_rules_on_update_update_old AS ON UPDATE TO active_rules
+    WHERE OLD.keys::TEXT <> NEW.keys::TEXT
     DO UPDATE keys SET active = FALSE WHERE key ~ OLD.keys AND NOT key ~ NEW.keys;
 
 CREATE OR REPLACE RULE active_rules_on_update_update_new AS ON UPDATE TO active_rules
@@ -103,9 +105,11 @@ CREATE OR REPLACE RULE active_rules_on_delete_update AS ON DELETE TO active_rule
     DO UPDATE keys SET active = FALSE WHERE key ~ OLD.keys;
 
 CREATE OR REPLACE RULE visible_rules_on_insert_update AS ON INSERT TO visible_rules
-    DO UPDATE keys SET visible = NEW.after <= CURRENT_TIMESTAMP WHERE key ~ NEW.keys;
+    WHERE NEW.after <= CURRENT_TIMESTAMP
+    DO UPDATE keys SET visible = TRUE WHERE key ~ NEW.keys;
 
 CREATE OR REPLACE RULE visible_rules_on_update_update_old AS ON UPDATE TO visible_rules
+    WHERE OLD.keys::TEXT <> NEW.keys::TEXT
     DO UPDATE keys SET visible = FALSE WHERE key ~ OLD.keys AND NOT key ~ NEW.keys;
 
 CREATE OR REPLACE RULE visible_rules_on_update_update_new AS ON UPDATE TO visible_rules
@@ -118,6 +122,7 @@ CREATE OR REPLACE RULE deadline_rules_on_insert_update AS ON INSERT TO deadline_
     DO UPDATE keys SET deadline = NEW.deadline, penalty_id = NEW.penalty_id WHERE key ~ NEW.keys;
 
 CREATE OR REPLACE RULE deadline_rules_on_update_update_old AS ON UPDATE TO deadline_rules
+    WHERE OLD.keys::TEXT <> NEW.keys::TEXT
     DO UPDATE keys SET deadline = NULL, penalty_id = NULL WHERE key ~ OLD.keys AND NOT key ~ NEW.keys;
 
 CREATE OR REPLACE RULE deadline_rules_on_update_update_new AS ON UPDATE TO deadline_rules
