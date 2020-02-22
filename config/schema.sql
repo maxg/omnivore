@@ -403,73 +403,55 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER computations_on_insert_ensure_key BEFORE INSERT ON computations
     FOR EACH ROW EXECUTE PROCEDURE computations_ensure_key();
 
-CREATE OR REPLACE RULE keys_on_insert_delete_stale_computed AS ON INSERT TO keys
-    WHERE NEW.active
-          OR EXISTS(SELECT 1 FROM active_rules WHERE NEW.key ~ keys AND after <= CURRENT_TIMESTAMP)
-    DO DELETE FROM current_computed WHERE key IN (
-        WITH RECURSIVE all_computations AS (
-            SELECT output FROM computations WHERE NEW.key ? inputs
-            UNION ALL
-            SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
-        ) SELECT output FROM all_computations
-    );
-
-CREATE OR REPLACE RULE keys_on_update_delete_stale_computed AS ON UPDATE TO keys
-    WHERE NEW.active <> OLD.active
-    DO DELETE FROM current_computed WHERE key IN (
-        WITH RECURSIVE all_computations AS (
-            SELECT output FROM computations WHERE NEW.key ? inputs
-            UNION ALL
-            SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
-        ) SELECT output FROM all_computations
-    );
-
-CREATE OR REPLACE RULE keys_on_delete_delete_stale_computed AS ON DELETE TO keys
-    WHERE OLD.active
-    DO DELETE FROM current_computed WHERE key IN (
-        WITH RECURSIVE all_computations AS (
-            SELECT output FROM computations WHERE OLD.key ? inputs
-            UNION ALL
-            SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
-        ) SELECT output FROM all_computations
-    );
-
-CREATE OR REPLACE RULE raw_data_on_insert_delete_stale_computed AS ON INSERT TO raw_data
-    WHERE EXISTS (SELECT 1 FROM keys WHERE key = NEW.key AND active)
-    DO DELETE FROM current_computed WHERE username = NEW.username AND key IN (
-        WITH RECURSIVE all_computations AS (
-            SELECT output FROM computations WHERE NEW.key ? inputs
-            UNION ALL
-            SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
-        ) SELECT output FROM all_computations
-    );
-
-CREATE OR REPLACE RULE current_data_on_insert_delete_stale_computed AS ON INSERT TO current_data
-    WHERE EXISTS (SELECT 1 FROM keys WHERE key = NEW.key AND active)
-    DO DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE NEW.key ? inputs)
-                                          AND username = NEW.username;
-
-CREATE OR REPLACE RULE current_data_on_delete_delete_stale_computed AS ON DELETE TO current_data
-    WHERE EXISTS (SELECT 1 FROM keys WHERE key = OLD.key AND active)
-    DO DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE OLD.key ? inputs)
-                                          AND username = OLD.username;
-
-CREATE OR REPLACE RULE current_computed_on_insert_delete_stale_computed AS ON INSERT TO current_computed
-    WHERE EXISTS (SELECT 1 FROM keys WHERE key = NEW.key AND active)
-    DO DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE NEW.key ? inputs)
-                                          AND username = NEW.username;
-
-CREATE OR REPLACE FUNCTION recursive_delete_stale_computed() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION new_key_delete_stale_computed() RETURNS TRIGGER AS $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM keys WHERE key = OLD.key AND active) THEN
-    DELETE FROM current_computed WHERE key in (SELECT output FROM computations WHERE OLD.key ? inputs)
-                                       AND username = OLD.username;
-    END IF;
+    DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE NEW.key ? inputs);
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION new_data_delete_stale_computed() RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM current_computed WHERE EXISTS(SELECT 1 FROM keys WHERE key = NEW.key AND active)
+                                       AND key IN (SELECT output FROM computations WHERE NEW.key ? inputs)
+                                       AND username = NEW.username;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION old_data_delete_stale_computed() RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM current_computed WHERE EXISTS(SELECT 1 FROM keys WHERE key = OLD.key AND active)
+                                       AND key IN (SELECT output FROM computations WHERE OLD.key ? inputs)
+                                       AND username = OLD.username;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER keys_on_insert_delete_stale_computed AFTER INSERT ON keys
+    FOR EACH ROW WHEN (NEW.active) EXECUTE PROCEDURE new_key_delete_stale_computed();
+
+CREATE TRIGGER keys_on_update_delete_stale_computed AFTER UPDATE ON keys
+    FOR EACH ROW WHEN (NEW.active <> OLD.active) EXECUTE PROCEDURE new_key_delete_stale_computed();
+
+CREATE OR REPLACE RULE keys_on_delete_delete_stale_computed AS ON DELETE TO keys
+    WHERE OLD.active
+    DO DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE OLD.key ? inputs);
+
+CREATE TRIGGER raw_data_on_insert_delete_stale_computed AFTER INSERT ON raw_data
+    FOR EACH ROW EXECUTE PROCEDURE new_data_delete_stale_computed();
+
+CREATE TRIGGER current_data_on_insert_delete_stale_computed AFTER INSERT ON current_data
+    FOR EACH ROW EXECUTE PROCEDURE new_data_delete_stale_computed();
+
+CREATE TRIGGER current_data_on_delete_delete_stale_computed AFTER DELETE ON current_data
+    FOR EACH ROW EXECUTE PROCEDURE old_data_delete_stale_computed();
+
+CREATE TRIGGER current_computed_on_insert_delete_stale_computed AFTER INSERT ON current_computed
+    FOR EACH ROW EXECUTE PROCEDURE new_data_delete_stale_computed();
+
 CREATE TRIGGER current_computed_on_delete_delete_stale_computed AFTER DELETE ON current_computed
-    FOR EACH ROW EXECUTE PROCEDURE recursive_delete_stale_computed();
+    FOR EACH ROW EXECUTE PROCEDURE old_data_delete_stale_computed();
 
 CREATE OR REPLACE RULE computations_on_insert_delete_stale_computed AS ON INSERT TO computations
     DO DELETE FROM current_computed WHERE key IN (
