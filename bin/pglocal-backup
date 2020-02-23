@@ -15,5 +15,5 @@ do
   dest="backup/$db/$date"
   mkdir -p "$dest"
   pg_dump -Fd "$db" -f "$dest"
-  pg_dump -a --inserts -t 'staff|key_orders|penalties|agents|*rules' "$db" > "$dest"-config.sql
+  pg_dump -a --inserts -t 'staff|penalties|agents|*rules' "$db" > "$dest"-config.sql
 done
