@@ -394,7 +394,7 @@ Omnivore.prototype.findKeys = client(transaction(
 
 // get history
 Omnivore.prototype.history = client(transaction(
-                             types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
+                             Omnivore.prototype._history_in_tx = types.translate([ pg.Client, 'spec' ], [ 'row_array' ],
                              Omnivore.prototype._history = function _history(client, spec, done) {
   //console.log('history', spec);
   
@@ -521,7 +521,7 @@ Omnivore.prototype._computed = types.check([ pg.Client, 'row' ], [ 'row' ],
   
   async.waterfall([
     cb => this._getMatches(client, row.username, row.inputs, cb),
-    (inputs, cb) => this._evaluate(row, inputs, cb),
+    (inputs, cb) => this._evaluate(client, row, inputs, cb),
     (row, cb) => this._penalize(client, row, cb),
     (row, cb) => client.logQuery({
       name: 'computed-insert-current_computed',
@@ -553,8 +553,8 @@ Omnivore.prototype._getMatches = types.check([ pg.Client, 'null,username', 'key_
 
 const lquery_ops_regex = /[@*%|!]/;
 
-Omnivore.prototype._evaluate = types.check([ 'row', 'row_array' ], [ 'row' ],
-                               function _evaluate(output, inputs, done) {
+Omnivore.prototype._evaluate = types.check([ pg.Client, 'row', 'row_array' ], [ 'row' ],
+                               function _evaluate(client, output, inputs, done) {
   //console.log('evaluate', output.key, output.inputs, inputs);
   
   if ( ! inputs.length) {
@@ -567,7 +567,9 @@ Omnivore.prototype._evaluate = types.check([ 'row', 'row_array' ], [ 'row' ],
   let args = output.inputs.map(query => {
     let matched = rows[types.convertOut(query, 'key')] = types.convertOut(inputs.filter(input => input.query == query), 'row_array');
     matched.forEach(input => {
-      input.raw = done => this.history({ username: input.username, key: input.key, only_raw: true, hidden: true }, done);
+      input.raw = done => this._history_in_tx(client, {
+        username: input.username, key: input.key, only_raw: true, hidden: true,
+      }, done);
     });
     let vals = matched.map(input => input.value);
     if (lquery_ops_regex.test(query)) { return vals; }
