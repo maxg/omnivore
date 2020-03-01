@@ -12,7 +12,7 @@ psql='psql -q -d T.001/ia00 --set=ON_ERROR_STOP=1'
 
 PGOPTIONS='--client-min-messages=WARNING' dropdb --if-exists T.001/ia00
 createdb T.001/ia00
-$psql -f config/schema.sql
+$psql -f config/db-schema.sql
 $psql -f test/fixtures/base.sql
 
 txn_begin='BEGIN; DO $$ DECLARE result RECORD; BEGIN '
@@ -34,7 +34,7 @@ txn_end='END $$; ROLLBACK;'
     tests=(test/db-update/${@:-*}.ante.sql)
     for test in ${tests[@]}; do
         $psql -f <(cat <(echo -n "$txn_begin") $test \
-            config/update.sql ${test/.ante/.post} <(echo -n "$txn_end")) &&
+            config/db-update.sql ${test/.ante/.post} <(echo -n "$txn_end")) &&
         echo -n ok || echo -n not ok
         echo -n " update/$(basename $test .ante.sql)"
         [ -s $test ] || echo -n ' # TODO'

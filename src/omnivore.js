@@ -16,8 +16,8 @@ const logger = require('./logger');
 const csv = exports.csv = require('./omnivore-csv');
 const types = exports.types = require('./omnivore-types');
 
-const db_schema = fs.readFileSync('./config/schema.sql', { encoding: 'utf-8' });
-const db_update = fs.readFileSync('./config/update.sql', { encoding: 'utf-8' });
+const db_schema = fs.readFileSync('./config/db-schema.sql', { encoding: 'utf-8' });
+const db_update = fs.readFileSync('./config/db-update.sql', { encoding: 'utf-8' });
 
 const signature_algorithm = exports.signature_algorithm = 'RSA-SHA256';
 const signature_encoding = exports.signature_encoding = 'base64';
