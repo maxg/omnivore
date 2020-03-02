@@ -14,7 +14,7 @@ const slack_path = '/A/B/C';
 const slack_channel = '#nom';
 const missing_config = 'missing slack config';
 
-describe('notifier', function() {
+describe('Notifier', function() {
   
   let sandbox = sinon.sandbox.create();
   let slacker = http.createServer();
@@ -63,9 +63,10 @@ describe('notifier', function() {
   
   describe('#added()', () => {
     
-    it('should post to slack', done => {
+    it('should POST to Slack', done => {
       slacker.expect(req => {
-        req.url.should.read('/A/B/C');
+        req.method.should.eql('POST');
+        req.url.should.eql('/A/B/C');
         req.body.should.read({
           username: 'omnivore',
           channel: slack_channel,
@@ -93,9 +94,10 @@ describe('notifier', function() {
   
   describe('#error()', () => {
     
-    it('should post to slack', done => {
+    it('should POST to Slack', done => {
       slacker.expect(req => {
-        req.url.should.read('/A/B/C');
+        req.method.should.eql('POST');
+        req.url.should.eql('/A/B/C');
         req.body.should.read({
           username: 'omnivore',
           channel: slack_channel,
