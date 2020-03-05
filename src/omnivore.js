@@ -618,6 +618,7 @@ Omnivore.prototype._evaluate = types.check([ pg.Client, 'row', 'row_array' ], [ 
   let context = {
     args,
     rows,
+    output: types.convertOut(output, 'row'),
     async: asyncfn => { asyncfn(complete); return complete; },
   };
   
@@ -629,7 +630,7 @@ Omnivore.prototype._prepare = function _prepare(fn) {
   types.assert(fn, 'string');
   
   let script = new vm.Script(`
-    (({ args, rows, async }) => { delete call; return (${fn})(...args); })(call)
+    (({ args, rows, output, async }) => { delete call; return (${fn})(...args); })(call)
   `, {
     filename: `<${fn}>`,
     timeout: 1500,

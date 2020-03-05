@@ -1571,6 +1571,10 @@ describe('Omnivore', function() {
         });
       }));
       
+      it('should supply outout', testEnvironment(() => {
+        output.should.read({ username: 'alice', key: '/test/rules/a' });
+      }));
+      
       it('should supply #raw()', testEnvironment(() => async(cb => {
         rows['/test/rules/d'][0].raw((err, raw) => {
           raw.should.read([ { key: '/test/rules/d', value: 'w' }, { key: '/test/rules/d', value: 'z' } ]);
