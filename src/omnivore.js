@@ -32,19 +32,19 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config, create) {
   events.EventEmitter.call(this);
   
   this.course = course;
-  this.config = Object.assign({}, config);
+  this._config = Object.assign({}, config);
   
   this._log = logger.log.child({ in: 'omnivore', course });
   this._logForTime = ms => {
     return this._log[ms < 50 ? 'debug' : ms < 250 ? 'info' : 'warn'].bind(this._log);
   };
   
-  this._pool = new pg.Pool(Object.assign({ database: course }, this.config.db));
+  this._pool = new pg.Pool(Object.assign({ database: course }, this._config.db));
   
   this._functions = {};
   
   async.waterfall([
-    cb => cb(null, new pg.Client(Object.assign({ database: 'postgres' }, this.config.db))),
+    cb => cb(null, new pg.Client(Object.assign({ database: 'postgres' }, this._config.db))),
     (client, cb) => client.connect(err => cb(err, client)),
     (client, cb) => {
       this.once('ready', () => client.end());
@@ -71,7 +71,7 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config, create) {
   });
   
   this._memo('agent', 'allStaff');
-  if (this.config.debug_function_time) {
+  if (this._config.debug_function_time) {
     this._time(
       '_add', '_multiadd',
       '_get', '_multiget',
@@ -142,7 +142,7 @@ function client(fn) {
       client.inspect = function(depth, opts) { return '[client]'; }
       
       client.logQuery = client.query;
-      if (this.config.debug_query_time) {
+      if (this._config.debug_query_time) {
         client.logQuery = function logQuery(stmt, ...args) {
           let qstart = +new Date();
           let cb = args.pop();
