@@ -21,7 +21,7 @@ const omnivore = require('./omnivore');
 const x_auth_user = exports.x_auth_user = 'X-Authenticated-User';
 const x_omni_sign = exports.x_omni_sign = 'X-Omnivore-Signed';
 
-const upload_id_regex = /\w{8}(-\w{4}){3}-\w{12}/;
+const uuid_regex = /\w{8}(-\w{4}){3}-\w{12}/;
 
 // create a web frontend for an Omnivore backend
 exports.createApp = function createApp(hosturl, omni) {
@@ -79,8 +79,13 @@ exports.createApp = function createApp(hosturl, omni) {
     next();
   });
   
-  app.param('upload_id', (req, res, next, keys) => {
-    if( ! upload_id_regex.test(req.params.upload_id)) { return next('route'); }
+  app.param('upload_id', (req, res, next, id) => {
+    if( ! uuid_regex.test(id)) { return next('route'); }
+    next();
+  });
+  
+  app.param('stream_id', (req, res, next, id) => {
+    if( ! uuid_regex.test(id)) { return next('route'); }
     next();
   });
   
@@ -220,18 +225,56 @@ exports.createApp = function createApp(hosturl, omni) {
     next();
   }
   
+  const pending_streams = new Map();
+  
+  function create_stream(emitter, template, prefix) {
+    let stream_id = uuidv4();
+    let results = [];
+    let stream = { results, emitter, template };
+    pending_streams.set(stream_id, stream);
+    emitter.on('rows', post_rows => results.push(...post_rows));
+    emitter.on('end', () => {
+      delete stream.emitter;
+      setTimeout(() => pending_streams.delete(stream_id), 1000 * 10);
+    });
+    return prefix + stream_id;
+  }
+  
+  function get_stream(req, res, next) {
+    res.locals.stream = pending_streams.get(req.params.stream_id);
+    if ( ! res.locals.stream) { return res.status(404).end(); }
+    next();
+  }
+  
+  app.get('/stream/:stream_id', staffonly, get_stream, (req, res, next) => {
+    let { results, emitter, template } = res.locals.stream;
+    if ( ! results) { return res.end(); }
+    delete res.locals.stream.results;
+    res.setHeader('Content-Type', 'text/html');
+    let write = rows => res.render(template, { rows }, (err, html) => res.write(html + '\0'));
+    write(results);
+    if ( ! emitter) { return res.end(); }
+    emitter.on('rows', write);
+    emitter.on('end', () => res.end());
+  });
+  
   app.get('/grades/:key(*)', staffonly, (req, res, next) => {
     let spec = { key: req.params.key, hidden: true };
-    omni.get(spec, (err, grades) => {
+    omni.stream(spec, (err, pre_grades, emitter) => {
       if (err) { return next(err); }
-      if (grades.length) {
+      if (pre_grades.length) {
+        let stream_path = emitter && create_stream(emitter, 'staff-grades-rows', `/${omni.course}/stream/`);
         async.auto({
-          grades: cb => cb(null, grades),
           keys: cb => omni.keys([ req.params.key ], cb),
           rules: cb => omni.rules(req.params.key, cb),
         }, (err, results) => {
           if (err) { return next(err); }
-          res.render('staff-grades', results);
+          res.render('staff-grades', {
+            pre_grades,
+            stream_path,
+            keys: results.keys,
+            rules: results.rules,
+          });
         });
       } else {
         async.auto({

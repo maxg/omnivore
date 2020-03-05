@@ -436,14 +436,33 @@ describe('serve-course', function() {
       }));
     });
     
-    it('should render leaf key', done => {
+    it('should render current leaf key', done => {
+      omni.get({ key: '/test/class-1/nanoquiz' }, bail(done, () => {
+        req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
+          res.statusCode.should.eql(200);
+          app.render.templates().should.eql([ 'staff-grades' ]);
+          body.should.match(/test.*class-1.*nanoquiz.*alice.*10.*bob.*9/);
+          body.should.match(/<td[^>]*visible[^>]*data-on/);
+          body.should.match(/agent.*nanoquizzer/);
+          body.should.not.match(/data-stream/);
+          done();
+        }));
+      }));
+    });
+    
+    it('should stream non-current leaf key', done => {
       req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
         res.statusCode.should.eql(200);
         app.render.templates().should.eql([ 'staff-grades' ]);
-        body.should.match(/test.*class-1.*nanoquiz.*alice.*10.*bob.*9/);
-        body.should.match(/<td[^>]*visible[^>]*data-on/);
-        body.should.match(/agent.*nanoquizzer/);
-        done();
+        body.should.match(/test.*class-1.*nanoquiz.*data-stream-user="alice".*alice.*none.*data-stream-user="bob".*bob.*none/);
+        let [ stream_course, stream_path ] = /<table[^>]*data-stream="\/([^"]+)(\/stream\/[^"]+)"/.exec(body).slice(1);
+        stream_course.should.eql(course);
+        req.headers({ [x_auth_user]: 'staffer' }).get(stream_path, bail(done, (stream_res, stream_body) => {
+          stream_res.statusCode.should.eql(200);
+          stream_body.should.match(/data-stream-user="alice".*alice.*10/);
+          stream_body.should.match(/data-stream-user="bob".*bob.*9/);
+          done();
+        }));
       }));
     });
     

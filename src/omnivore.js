@@ -260,6 +260,32 @@ Omnivore.prototype.get = client(transaction(
   //console.log('get', spec);
   
   async.waterfall([
+    cb => this._get_grade_rows(client, spec, cb),
+    (rows, cb) => this._current(client, rows, cb),
+  ], done);
+})));
+
+// stream data points
+Omnivore.prototype.stream = client(types.translate([ pg.Client, 'spec' ], [ 'row_array', 'object|undefined' ],
+                            Omnivore.prototype._stream = function _stream(client, spec, done) {
+  this._get_grade_rows(client, spec, (err, rows) => {
+    if (err) { return done(err); }
+    let missing = rows.filter(row => (row.raw_data || row.output) && ! row.created);
+    if ( ! missing.length) {
+      return done(null, rows, undefined);
+    }
+    let emitter = new events.EventEmitter();
+    done(null, rows, emitter);
+    async.eachSeries(missing, (row, cb) => this._stream_current([ row ], emitter, cb), err => {
+      if (err) { return emitter.emit('error', err); }
+      emitter.emit('end');
+    });
+  });
+}));
+
+Omnivore.prototype._get_grade_rows = types.check([ pg.Client, 'spec' ], [ 'array' ],
+                                     function _get_grade_rows(client, spec, done) {
+  async.waterfall([
     cb => client.logQuery({
       name: 'get-select-grades',
       text: `SELECT * FROM grades
@@ -268,9 +294,9 @@ Omnivore.prototype.get = client(transaction(
       types: [ types.pg.TEXT, types.pg.LTREE, types.pg.BOOL ],
       values: [ spec.username, spec.key, spec.hidden ],
     }, cb),
-    (result, cb) => this._current(client, result.rows, cb),
+    (result, cb) => cb(null, result.rows),
   ], done);
-})));
+});
 
 // get data points
 Omnivore.prototype.multiget = client(transaction(
@@ -464,6 +490,16 @@ Omnivore.prototype._current = types.check([ pg.Client, 'row_array' ], [ 'row_arr
     return cb(null, row);
   }, done);
 });
+
+Omnivore.prototype._stream_current = client(transaction(
+                                     types.check([ pg.Client, 'row_array', events.EventEmitter ], [ ],
+                                     function _stream_current(client, rows, emitter, done) {
+  this._current(client, rows, (err, result) => {
+    if (err) { return done(err); }
+    emitter.emit('rows', types.convertOut(result, 'row_array'));
+    done();
+  });
+})));
 
 Omnivore.prototype._data = types.check([ pg.Client, 'row' ], [ 'row' ],
                            function _data(client, row, done) {

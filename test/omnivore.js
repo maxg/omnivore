@@ -674,6 +674,66 @@ describe('Omnivore', function() {
     })
   });
   
+  describe('#stream()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 100, cb),
+        cb => omni.add('tester', 'bob', '/test/alpha', now, 80, cb),
+        cb => omni.compute('/test', 'beta', [ 'alpha' ], alpha => alpha / 2, cb),
+        cb => omni.active('/test/alpha', now, cb),
+        cb => omni.visible('/test/alpha|beta|gamma|delta', now, cb),
+      ], done);
+    });
+    
+    it('should return data for user + key', done => {
+      omni.stream({ username: 'alice', key: '/test/alpha' }, bail(done, (pre_rows, emitter) => {
+        pre_rows.should.read([
+          { username: 'alice', key: '/test/alpha', ts: null, value: null },
+        ]);
+        let expected = [
+          { username: 'alice', key: '/test/alpha', ts: now, value: 100 },
+        ];
+        let found = [];
+        emitter.on('rows', post_rows => found.push(...post_rows));
+        emitter.on('end', () => {
+          found.should.read(expected);
+          done();
+        });
+      }));
+    });
+    
+    it('should return all data for key', done => {
+      omni.stream({ key: '/test/alpha' }, bail(done, (pre_rows, emitter) => {
+        pre_rows.should.read([
+          { username: 'alice', key: '/test/alpha', ts: null, value: null },
+          { username: 'bob', key: '/test/alpha', ts: null, value: null },
+        ]);
+        let expected = [
+          { username: 'alice', key: '/test/alpha', ts: now, value: 100 },
+          { username: 'bob', key: '/test/alpha', ts: now, value: 80 },
+        ];
+        let found = [];
+        emitter.on('rows', post_rows => found.push(...post_rows));
+        emitter.on('end', () => {
+          found.sort().should.read(expected);
+          done();
+        });
+      }));
+    });
+    
+    it('should return data concurrently', done => {
+      let step = () => { step = done };
+      let callback = bail(done, (pre_rows, emitter) => {
+        pre_rows.should.read([ { value: null } ]);
+        emitter.on('rows', post_rows => post_rows.should.read([ { value: 100 }]));
+        emitter.on('end', () => step());
+      });
+      omni.stream({ username: 'alice', key: '/test/alpha' }, callback);
+      omni.stream({ username: 'alice', key: '/test/alpha' }, callback);
+    });
+  });
+  
   describe('#multiget()', () => {
     
     beforeEach(done => {

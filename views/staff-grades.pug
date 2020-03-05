@@ -63,10 +63,10 @@ append content
               for input, idx in rule.inputs
                 tr #[td.sep.text-right(colspan=2)= idx ? '' : 'from'] #[td= path.relative('/', input)]
   
-  table
+  table(data-stream=stream_path)
     tbody
-      each row in grades
-        tr
+      each row in pre_grades
+        tr(data-stream-user=(row.raw_data || row.output) && ! row.created ? row.username : false)
           td.user: a(href=`/${course}/u/${row.username}${key}`)= row.username
           td.value(data-type=types.which(row.value, types.value_types)): +value(row.value)
           td.ts: +ts(row.ts)
