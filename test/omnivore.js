@@ -803,7 +803,7 @@ describe('Omnivore', function() {
     beforeEach(done => {
       async.series([
         cb => omni.pg((client, done) => client.query(fixtures('small'), done), cb),
-        cb => omni.add('nanoquizzer', 'alice', '/test/class_3/nanoquiz', now, 7, cb),
+        cb => omni.add('nanoquizzer', 'alice', '/test/class-3/nanoquiz', now, 7, cb),
       ], done);
     });
     
@@ -832,8 +832,8 @@ describe('Omnivore', function() {
       async.series([
         cb => omni.pg((client, done) => client.query(fixtures('small'), done), cb),
         cb => omni.meta('/test/*/nanoquiz', { promotion: 1 }, cb),
-        cb => omni.meta('/test/class_2/nanoquiz', { promotion: 2 }, cb),
-        cb => omni.add('tester', 'alice', '/test/class_3/nanoquiz', now, 7, cb),
+        cb => omni.meta('/test/class-2/nanoquiz', { promotion: 2 }, cb),
+        cb => omni.add('tester', 'alice', '/test/class-3/nanoquiz', now, 7, cb),
       ], done);
     });
     
@@ -858,8 +858,8 @@ describe('Omnivore', function() {
     it('should return values in order', done => {
       async.series([
         cb => omni.meta('/test/*/*/important', { promotion: 2 }, cb),
-        cb => omni.add('tester', 'alice', '/test/class_2/super/important', now, true, cb),
-        cb => omni.add('tester', 'alice', '/test/class_3/also/important', now, true, cb),
+        cb => omni.add('tester', 'alice', '/test/class-2/super/important', now, true, cb),
+        cb => omni.add('tester', 'alice', '/test/class-3/also/important', now, true, cb),
         cb => omni.grandchildren({ username: 'alice', key: '/test', hidden: true }, cb),
       ], bail(done, results => {
         results[3].should.read([
