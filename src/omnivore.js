@@ -593,11 +593,7 @@ Omnivore.prototype._evaluate = types.check([ pg.Client, 'row', 'row_array' ], [ 
                                function _evaluate(client, output, inputs, done) {
   //console.log('evaluate', output.key, output.inputs, inputs);
   
-  if ( ! inputs.length) {
-    return done(null, output);
-  }
-  
-  let ts = inputs.map(i => i.ts).reduce((a, b) => a > b ? a : b);
+  let ts = inputs.length ? inputs.map(i => i.ts).reduce((a, b) => a > b ? a : b) : new Date();
   
   let rows = {};
   let args = output.inputs.map(query => {

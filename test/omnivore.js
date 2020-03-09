@@ -452,6 +452,32 @@ describe('Omnivore', function() {
       });
     });
     
+    context('no inputs', () => {
+      
+      beforeEach(done => {
+        async.series([
+          cb => omni.compute('/test', 'gamma', [], () => 42, cb),
+        ], done);
+      });
+      
+      it('should return output', done => {
+        omni.get({ username: 'alice', key: '/test/gamma' }, bail(done, rows => {
+          rows.should.read([ { username: 'alice', key: '/test/gamma', value: 42 } ]);
+          done();
+        }));
+      });
+      
+      it('should return output using current timestamp', done => {
+        let start = new Date();
+        omni.get({ username: 'alice', key: '/test/gamma' }, bail(done, rows => {
+          let end = new Date();
+          rows[0].should.read({ username: 'alice', key: '/test/gamma' });
+          rows[0].ts.should.be.greaterThan(start).and.lessThan(end);
+          done();
+        }));
+      });
+    });
+    
     context('chained computation', () => {
       
       beforeEach(done => {
@@ -1526,6 +1552,30 @@ describe('Omnivore', function() {
     });
     
     it('should add compute rule with word prefix matching');
+    
+    it('should add compute rule with no inputs', done => {
+      async.series([
+        cb => omni.compute('/test/rules', 'a', [], () => 'cool', cb),
+        cb => omni.add('tester', 'alice', '/test/unrelated/z', now, 0, cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results[2].should.read([
+          { key: '/test/rules/a', value: 'cool' },
+          { key: '/test/unrelated/z' },
+        ]);
+        done();
+      }));
+    });
+    
+    it('should not add compute rule with no inputs and wildcard base', done => {
+      omni.compute('/test/*', 'a', [], () => 'not cool', (err) => {
+        should.exist(err);
+        omni.get({ hidden: true }, bail(done, results => {
+          results.should.read([]);
+          done();
+        }));
+      });
+    });
     
     it('should add asynchronous compute rule', done => {
       async.series([

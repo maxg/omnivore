@@ -328,7 +328,6 @@ CREATE TABLE IF NOT EXISTS computations (
 CREATE INDEX computations_base_gist ON computations USING gist(base);
 CREATE INDEX computations_output_gist ON computations USING gist(output);
 
--- TODO written as a loop to avoid expensive rule expansion; change rules to triggers
 CREATE OR REPLACE FUNCTION computation_rules_new_key() RETURNS TRIGGER AS $$
 DECLARE
     new_computation computations%ROWTYPE;
@@ -355,13 +354,14 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER keys_on_insert_insert_computations AFTER INSERT ON keys
     FOR EACH ROW EXECUTE PROCEDURE computation_rules_new_key();
 
--- TODO written as a loop to avoid expensive rule expansion; change rules to triggers
 CREATE OR REPLACE FUNCTION computation_rules_new_rule() RETURNS TRIGGER AS $$
 DECLARE
     new_computation computations%ROWTYPE;
 BEGIN
     FOR new_computation IN
-        SELECT prefix, prefix || NEW.output, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], NEW.compute FROM
+        SELECT coalesce(NEW.base::TEXT, ''), coalesce(NEW.base || '.', '') || NEW.output::TEXT, NEW.inputs, NEW.compute WHERE cardinality(NEW.inputs) = 0
+        UNION ALL
+        SELECT prefix, (prefix || NEW.output)::TEXT, array_agg(CASE WHEN prefix = '' THEN '' ELSE prefix::TEXT || '.' END || input ORDER BY ordinality)::LQUERY[], NEW.compute FROM
         (
             SELECT DISTINCT subpath(key,0,split)::TEXT AS prefix, input, ordinality FROM
             (
