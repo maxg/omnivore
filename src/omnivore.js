@@ -376,7 +376,7 @@ Omnivore.prototype.dirs = client(transaction(
       text: `SELECT DISTINCT subpath(key, 0, nlevel($1) + 1) AS key FROM keys
              WHERE (key ~ $2) AND (visible OR $3)
              ORDER BY key`,
-      values: [ spec.key, spec.key ? `${spec.key}.*{2,}` : '*{2,}', spec.hidden ],
+      values: [ spec.key, spec.key ? `${spec.key}.!_.*{1,}` : '!_.*{1,}', spec.hidden ],
     }, cb),
     (result, cb) => cb(null, result.rows),
   ], done);

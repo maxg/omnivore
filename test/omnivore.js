@@ -885,20 +885,74 @@ describe('Omnivore', function() {
   
   describe('#dirs()', () => {
     
-    it('should return subdirs of dir')
+    beforeEach(done => {
+      async.series([
+        cb => omni.pg((client, done) => client.query(fixtures('small'), done), cb),
+        cb => omni.add('tester', 'alice', '/test/class-3/nanoquiz', now, 7, cb),
+        cb => omni.add('tester', 'bob', '/test/class-1/-/unnanoquiz', now, -3, cb),
+        cb => omni.add('root', 'alice', '/-/secret', now, 0, cb),
+      ], done);
+    });
     
-    it('should return subdirs of root')
+    it('should return subdirs of root', done => {
+      omni.dirs({ key: '/', hidden: true }, bail(done, rows => {
+        rows.should.read([ { key: '/test' } ]);
+        done();
+      }));
+    });
     
-    it('should not return subdirs of hidden values');
+    it('should return subdirs of dir', done => {
+      omni.dirs({ key: '/test', hidden: true }, bail(done, rows => {
+        rows.should.read([ { key: '/test/class-1' }, { key: '/test/class-2' }, { key: '/test/class-3' } ]);
+        done();
+      }));
+    });
+    
+    it('should not return subdirs of all hidden values', done => {
+      omni.dirs({ key: '/test' }, bail(done, rows => {
+        rows.should.read([ { key: '/test/class-1' }, { key: '/test/class-2' } ]);
+        done();
+      }));
+    });
+    
+    it('should not return no-name subdir of dir', done => {
+      omni.dirs({ key: '/test/class-1', hidden: true }, bail(done, rows => {
+        rows.should.read([]);
+        done();
+      }));
+    });
   });
   
   describe('#leaves()', () => {
     
-    it('should return children of root');
+    beforeEach(done => {
+      async.series([
+        cb => omni.pg((client, done) => client.query(fixtures('small'), done), cb),
+        cb => omni.add('tester', 'alice', '/test/class-3/nanoquiz', now, 7, cb),
+        cb => omni.add('root', 'alice', '/secret', now, 0, cb),
+      ], done);
+    });
     
-    it('should return children of dir');
+    it('should return children of root', done => {
+      omni.leaves({ key: '/', hidden: true }, bail(done, rows => {
+        rows.should.read([ { key: '/secret' } ]);
+        done();
+      }));
+    });
     
-    it('should not return hidden children');
+    it('should return children of dir', done => {
+      omni.leaves({ key: '/test/class-3', hidden: true }, bail(done, rows => {
+        rows.should.read([ { key: '/test/class-3/nanoquiz' } ]);
+        done();
+      }));
+    });
+    
+    it('should not return hidden children', done => {
+      omni.leaves({ key: '/test/class-3' }, bail(done, rows => {
+        rows.should.read([]);
+        done();
+      }));
+    });
   });
   
   describe('#findKeys()', () => {
@@ -1197,8 +1251,8 @@ describe('Omnivore', function() {
     it('should return agent rules', done => {
       omni.rules('/test/q/b', bail(done, result => {
         result.should.read({
-          creators: [ { agent: 'tester' } ],
-          writers: [ { agent: 'tester' } ],
+          creators: [ { agent: 'root' }, { agent: 'tester' } ],
+          writers: [ { agent: 'root' }, { agent: 'tester' } ],
         });
         done();
       }));
