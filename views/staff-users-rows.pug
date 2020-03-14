@@ -1,0 +1,10 @@
+include mixins
+
+each row in rows
+  tr(data-stream-user=row.username)
+    td.roster(data-on=row.on_roster)
+    td.user: a(href=`/${course}/u/${row.username}/`)= row.username
+    td.value(data-type='string')
+      if row.value
+        | #{row.value.givenName || ''} #{row.value.familyName || '?'}
+    td.staffer(data-on=row.on_staff)

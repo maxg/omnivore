@@ -15,4 +15,9 @@ module.exports = {
     password,
   },
   db_types: { ltree, ltree_array, lquery, lquery_array },
+  mit: {
+    domain: '${mit_domain}',
+    client_id: '${mit_id}',
+    client_secret: '${mit_secret}',
+  },
 };

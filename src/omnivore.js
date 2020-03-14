@@ -12,11 +12,13 @@ const memoize = require('memoizee');
 const pg = require('pg');
 
 const logger = require('./logger');
+const mit_api = require('./mit-api');
 
 const csv = exports.csv = require('./omnivore-csv');
 const types = exports.types = require('./omnivore-types');
 
 const db_schema = fs.readFileSync('./config/db-schema.sql', { encoding: 'utf-8' });
+const db_intrinsic = fs.readFileSync('./config/db-intrinsic.sql', { encoding: 'utf-8' });
 const db_update = fs.readFileSync('./config/db-update.sql', { encoding: 'utf-8' });
 
 const signature_algorithm = exports.signature_algorithm = 'RSA-SHA256';
@@ -41,7 +43,16 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config, create) {
   
   this._pool = new pg.Pool(Object.assign({ database: course }, this._config.db));
   
-  this._functions = {};
+  this._functions = {
+    'intrinsic/userinfo': () => ({}),
+  };
+  
+  if (this._config.mit) {
+    let mit = new mit_api.MIT_API(this._config.mit);
+    Object.assign(this._functions, {
+      'intrinsic/userinfo': ({ async, output: { username } }) => async(cb => mit.person(username, cb)),
+    });
+  }
   
   async.waterfall([
     cb => cb(null, new pg.Client(Object.assign({ database: 'postgres' }, this._config.db))),
@@ -61,7 +72,10 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config, create) {
     (created, cb) => {
       if (created) {
         this._log.info({ course }, 'initializing');
-        return this._pool.query(db_schema, cb);
+        return async.series([
+          cb => this._pool.query(db_schema, cb),
+          cb => this._pool.query(db_intrinsic, cb),
+        ], cb);
       }
       cb();
     }
@@ -266,20 +280,12 @@ Omnivore.prototype.get = client(transaction(
 })));
 
 // stream data points
-Omnivore.prototype.stream = client(types.translate([ pg.Client, 'spec' ], [ 'row_array', 'object|undefined' ],
-                            Omnivore.prototype._stream = function _stream(client, spec, done) {
+Omnivore.prototype.stream = client(
+                            types.translate([ pg.Client, 'spec' ], [ 'row_array', 'object|undefined' ],
+                            function _stream(client, spec, done) {
   this._get_grade_rows(client, spec, (err, rows) => {
     if (err) { return done(err); }
-    let missing = rows.filter(row => (row.raw_data || row.output) && ! row.created);
-    if ( ! missing.length) {
-      return done(null, rows, undefined);
-    }
-    let emitter = new events.EventEmitter();
-    done(null, rows, emitter);
-    async.eachSeries(missing, (row, cb) => this._stream_current([ row ], emitter, cb), err => {
-      if (err) { return emitter.emit('error', err); }
-      emitter.emit('end');
-    });
+    this._stream_current(rows, done);
   });
 }));
 
@@ -289,7 +295,8 @@ Omnivore.prototype._get_grade_rows = types.check([ pg.Client, 'spec' ], [ 'array
     cb => client.logQuery({
       name: 'get-select-grades',
       text: `SELECT * FROM grades
-             WHERE ($1 IS NULL OR username = $1) AND ($2 IS NULL OR key = $2) AND (visible OR $3)
+             WHERE ($1 IS NULL OR username = $1) AND (($2 IS NULL AND NOT key ~ '_.*') OR key = $2)
+                   AND (visible OR $3)
              ORDER BY username, key`,
       types: [ types.pg.TEXT, types.pg.LTREE, types.pg.BOOL ],
       values: [ spec.username, spec.key, spec.hidden ],
@@ -491,9 +498,23 @@ Omnivore.prototype._current = types.check([ pg.Client, 'row_array' ], [ 'row_arr
   }, done);
 });
 
-Omnivore.prototype._stream_current = client(transaction(
-                                     types.check([ pg.Client, 'row_array', events.EventEmitter ], [ ],
-                                     function _stream_current(client, rows, emitter, done) {
+Omnivore.prototype._stream_current = types.check([ 'row_array' ], [ 'row_array', 'object|undefined' ],
+                                     function _stream_current(rows, done) {
+  let missing = rows.filter(row => (row.raw_data || row.output) && ! row.created);
+  if ( ! missing.length) {
+    return done(null, rows, undefined);
+  }
+  let emitter = new events.EventEmitter();
+  done(null, rows, emitter);
+  async.eachSeries(missing, (row, cb) => this._emit_current([ row ], emitter, cb), err => {
+    if (err) { return emitter.emit('error', err); }
+    emitter.emit('end');
+  });
+});
+
+Omnivore.prototype._emit_current = client(transaction(
+                                   types.check([ pg.Client, 'row_array', events.EventEmitter ], [ ],
+                                   function _emit_current(client, rows, emitter, done) {
   this._current(client, rows, (err, result) => {
     if (err) { return done(err); }
     emitter.emit('rows', types.convertOut(result, 'row_array'));
@@ -675,20 +696,37 @@ Omnivore.prototype.allStaff = client(
 }));
 
 Omnivore.prototype.allUsers = client(
-                              types.check([ pg.Client ], [ 'array' ],
-                              function _users(client, done) {
+                              types.translate([ pg.Client ], [ 'row_array' ],
+                              function _allUsers(client, done) {
+  async.waterfall([
+    cb => this._get_user_rows(client, cb),
+    (rows, cb) => this._current(client, rows, cb),
+  ], done);
+}));
+
+Omnivore.prototype.streamAllUsers = client(
+                                    types.translate([ pg.Client ], [ 'row_array', 'object|undefined' ],
+                                    function _streamAllUsers(client, done) {
+  this._get_user_rows(client, (err, rows) => {
+    if (err) { return done(err); }
+    this._stream_current(rows, done);
+  });
+}));
+
+Omnivore.prototype._get_user_rows = types.check([ pg.Client ], [ 'array' ],
+                                    function _get_user_rows(client, done) {
   async.waterfall([
     cb => client.logQuery({
       name: 'allUsers-select-users',
-      text: `SELECT *, COALESCE(on_staff, FALSE) AS on_staff FROM
-             users
+      text: `SELECT *, COALESCE(is_on_staff, FALSE) AS on_staff FROM
+             (SELECT * FROM grades WHERE key = '_.userinfo') userinfo
              NATURAL LEFT JOIN
-             (SELECT *, TRUE AS on_staff FROM staff) staff
-             ORDER BY on_roster DESC, username`,
+             (SELECT *, TRUE AS is_on_staff FROM staff) staff
+             ORDER BY on_roster DESC, on_staff ASC, username`,
     }, cb),
     (result, cb) => cb(null, result.rows),
   ], done);
-}));
+});
 
 Omnivore.prototype.users = client(
                            types.check([ pg.Client, 'array' ], [ 'array' ],

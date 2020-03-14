@@ -440,9 +440,12 @@ exports.createApp = function createApp(hosturl, omni) {
   });
   
   app.get('/users/', staffonly, (req, res, next) => {
-    omni.allUsers((err, users) => {
+    omni.streamAllUsers((err, pre_users, emitter) => {
       if (err) { return next(err); }
-      res.render('staff-users', { users });
+      res.render('staff-users', {
+        pre_users,
+        stream_path: emitter && create_stream(emitter, 'staff-users-rows', `/${omni.course}/stream/`),
+      });
     });
   });
   app.get('/users', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));

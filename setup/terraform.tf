@@ -10,6 +10,9 @@ variable "oidc_host" {}
 variable "oidc_id" {}
 variable "oidc_secret" {}
 variable "oidc_email_domain" {}
+variable "mit_domain" {}
+variable "mit_id" {}
+variable "mit_secret" {}
 
 # terraform init -backend-config=terraform.tfvars
 terraform {
@@ -282,6 +285,9 @@ data "template_file" "env_production" {
     oidc_secret = var.oidc_secret
     oidc_email_domain = var.oidc_email_domain
     web_secret = random_string.web_secret.result
+    mit_domain = var.mit_domain
+    mit_id = var.mit_id
+    mit_secret = var.mit_secret
   }
 }
 

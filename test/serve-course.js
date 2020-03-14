@@ -55,6 +55,7 @@ describe('serve-course', function() {
     omni.pg((client, done) => {
       async.series([
         cb => client.query(fixtures('destroy'), cb),
+        cb => client.query(fixtures('create'), cb),
         cb => client.query(fixtures('base'), cb),
         cb => client.query(fixtures('small'), cb),
       ], done);
@@ -803,7 +804,13 @@ describe('serve-course', function() {
         app.render.templates().should.eql([ 'staff-users' ]);
         body.should.match(/alice/);
         body.should.match(/bob/);
-        done();
+        let stream_path = /\/stream\/[^"]+/.exec(body)[0];
+        req.headers({ [x_auth_user]: 'staffer' }).get(stream_path, bail(done, (stream_res, stream_body) => {
+          stream_res.statusCode.should.eql(200);
+          stream_body.should.match(/data-stream-user="alice".*alice/);
+          stream_body.should.match(/data-stream-user="bob".*bob/);
+          done();
+        }));
       }));
     });
     

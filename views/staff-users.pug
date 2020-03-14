@@ -5,10 +5,13 @@ append head
 
 append content
   
-  table
+  table(data-stream=stream_path)
     tbody
-      each row in users
-        tr
+      each row in pre_users
+        tr(data-stream-user= ! row.created ? row.username : false)
           td.roster(data-on=row.on_roster)
           td.user: a(href=`/${course}/u/${row.username}/`)= row.username
+          td.value(data-type='string')
+            if row.value
+              | #{row.value.givenName || ''} #{row.value.familyName || '?'}
           td.staffer(data-on=row.on_staff)

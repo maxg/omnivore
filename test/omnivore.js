@@ -26,6 +26,7 @@ describe('Omnivore', function() {
     omni.pg((client, done) => {
       async.series([
         cb => client.query(fixtures('destroy'), cb),
+        cb => client.query(fixtures('create'), cb),
         cb => client.query(fixtures('base'), cb),
       ], done);
     }, done);
@@ -697,7 +698,27 @@ describe('Omnivore', function() {
           done();
         }));
       });
-    })
+    });
+    
+    context('intrinsic', () => {
+      
+      it('should not include unspecified intrinsics', done => {
+        omni.get({ hidden: true }, bail(done, results => {
+          results.filter(row => row.key.startsWith('/-/')).should.eql([]);
+          done();
+        }));
+      });
+      
+      it('should include specified intrinsic', done => {
+        omni.get({ key: '/-/userinfo', hidden: true }, bail(done, results => {
+          results.should.read([
+            { username: 'alice', key: '/-/userinfo' },
+            { username: 'bob', key: '/-/userinfo' },
+          ]);
+          done();
+        }));
+      });
+    });
   });
   
   describe('#stream()', () => {
@@ -1112,6 +1133,49 @@ describe('Omnivore', function() {
           { username: 'bob', on_roster: false, on_staff: false },
         ]);
         done();
+      }));
+    });
+    
+    it('should include user info', done => {
+      let info = { givenName: 'Alice' };
+      async.series([
+        cb => omni.add('root', 'alice', '/-/userinfo', now, info, cb),
+        cb => omni.allUsers(cb),
+      ], bail(done, results => {
+        results[1].should.read([
+          { username: 'alice', value: info }, { username: 'bob', value: {} },
+        ]);
+        done();
+      }));
+    });
+  });
+  
+  describe('#streamAllUsers()', () => {
+    
+    let info = { givenName: 'Alice' };
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 10, cb),
+        cb => omni.add('tester', 'bob', '/test/beta', now, 20, cb),
+        cb => omni.add('root', 'alice', '/-/userinfo', now, info, cb),
+      ], done);
+    });
+    
+    it('should return users with info', done => {
+      omni.streamAllUsers(bail(done, (pre_rows, emitter) => {
+        pre_rows.should.read([
+          { username: 'alice', value: null }, { username: 'bob', value: null },
+        ]);
+        let expected = [
+          { username: 'alice', value: info }, { username: 'bob', value: {} },
+        ];
+        let found = [];
+        emitter.on('rows', post_rows => found.push(...post_rows));
+        emitter.on('end', () => {
+          found.should.read(expected);
+          done();
+        });
       }));
     });
   });
