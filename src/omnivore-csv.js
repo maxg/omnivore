@@ -29,12 +29,14 @@ exports.parse = function parse(input) {
     trim: true,
   });
   let keys = [];
+  let ts = undefined;
   let rows = [];
   sheet.once('data', ([ , ...keyrow ]) => {
     for (let key of keyrow) {
       if (types.is(key, 'key_path')) {
         keys.push(key);
       } else {
+        if (types.is(key, 'timestamp')) { ts = new Date(key); }
         break;
       }
     }
@@ -46,7 +48,7 @@ exports.parse = function parse(input) {
     }
     rows.push({ username, values });
   }));
-  sheet.once('finish', () => sheet.emit('parsed', keys, rows));
+  sheet.once('finish', () => sheet.emit('parsed', keys, ts, rows));
   process.nextTick(() => sheet.end(input));
   return sheet;
 };

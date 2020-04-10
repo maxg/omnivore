@@ -766,6 +766,8 @@ describe('serve-course', function() {
       }));
     });
     
+    it('should use timestamp');
+    
     it('should record save time', done => {
       req.headers({ [x_auth_user]: 'nanoquizzer' }).post(save_url, bail(done, () => {
         req.headers({ [x_auth_user]: 'staffer' }).get(save_url, bail(done, (res, body) => {

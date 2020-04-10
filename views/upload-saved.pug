@@ -9,7 +9,7 @@ append content
     p Saved #[+plural(valid, 'grade')]
       if invalid
         | #[br] (skipped #{invalid} invalid)
-      | #[br] dated #{upload.created} #[br] by #{authuser}
+      | #[br] dated #{ts} #[br] by #{authuser}
   
   p Keys
   table

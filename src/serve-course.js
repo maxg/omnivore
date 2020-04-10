@@ -358,8 +358,8 @@ exports.createApp = function createApp(hosturl, omni) {
   
   app.post('/upload.csv', staffonly, multer().single('grades'), (req, res, next) => {
     let input = req.file && req.file.buffer || req.body.gradestext;
-    omnivore.csv.parse(input).once('parsed', (keys, rows) => {
-      let upload_path = create_upload(res.locals.authuser, { keys, rows }, `/${omni.course}/upload/`);
+    omnivore.csv.parse(input).once('parsed', (keys, ts, rows) => {
+      let upload_path = create_upload(res.locals.authuser, { keys, ts, rows }, `/${omni.course}/upload/`);
       res.redirect(303, upload_path);
     });
   });
@@ -374,6 +374,7 @@ exports.createApp = function createApp(hosturl, omni) {
       res.locals.fullpage = true;
       res.render('upload-preview', {
         keys: results.keys,
+        ts: data.ts,
         rows: data.rows.map(row => Object.assign({}, row, results.users.shift())),
       });
     });
@@ -382,10 +383,11 @@ exports.createApp = function createApp(hosturl, omni) {
   app.post('/upload/:upload_id', staffonly, get_upload, (req, res, next) => {
     let data = res.locals.upload.data;
     let valid = data.rows.filter(row => omnivore.types.is(row.username, 'username'));
+    let ts = data.ts || res.locals.upload.created;
     let rows = Array.prototype.concat.call(...valid.map(row => data.keys.map((key, idx) => ({
       username: row.username,
       key,
-      ts: res.locals.upload.created,
+      ts,
       value: row.values[idx],
     })))).filter(row => omnivore.types.is(row.value, 'value'));
     omni.multiadd(res.locals.authuser, rows, err => {
@@ -393,6 +395,7 @@ exports.createApp = function createApp(hosturl, omni) {
       res.locals.upload.saved = new Date();
       notify.added(res.locals.authuser, rows, res.locals.upload);
       res.render('upload-saved', {
+        ts,
         valid: rows.length,
         invalid: data.keys.length * data.rows.length - rows.length,
       });
