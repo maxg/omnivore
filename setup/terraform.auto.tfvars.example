@@ -1,4 +1,4 @@
-web_host = "omnivore.example.com"
+web_hosts = [ "omnivore.example.com" ]
 le_contact = "...@example.com"
 oidc_host = "oidc.example.com"
 oidc_id = "omnivore"

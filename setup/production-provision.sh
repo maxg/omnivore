@@ -4,7 +4,7 @@ set -x
 
 APP=$1
 NAME=$2
-HOST=$3
+HOSTS=$3
 CONTACT=$4
 TLS_FS=$5
 
@@ -47,19 +47,21 @@ sudo tee --append /etc/fstab <<< "$TLS_FS:/ /etc/letsencrypt efs tls,_netdev 0 0
 sudo mount /etc/letsencrypt
 
 # Start Certbot
-sudo certbot certonly --standalone --non-interactive --agree-tos --email $CONTACT --domains $HOST
+sudo certbot certonly --standalone --non-interactive --agree-tos --email $CONTACT --domains $HOSTS --cert-name $APP
 (
   cd /etc/letsencrypt
+  sudo tee renewal-hooks/pre/pause <<< 'curl http://localhost/pause'
+  sudo chmod +x renewal-hooks/pre/pause
   sudo tee renewal-hooks/post/permit <<EOD
 cd /etc/letsencrypt
 chmod o+x archive live
-chown -R $APP archive/$HOST
+chown -R $APP archive/$APP
 EOD
   sudo chmod +x renewal-hooks/post/permit
   sudo renewal-hooks/post/permit
 )
 sudo systemctl --now enable certbot.timer
-ln -s /etc/letsencrypt/live/$HOST /var/$APP/config/tls
+ln -s /etc/letsencrypt/live/$APP /var/$APP/config/tls
 
 # Start daemon
 sudo systemctl start $APP

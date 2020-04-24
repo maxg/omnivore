@@ -1,11 +1,12 @@
+const hostnames = '${web_hosts}'.split(',');
 module.exports = {
-  hostname: '${web_host}',
+  hostnames,
   oidc: {
     server: 'https://${oidc_host}',
     client: {
       client_id: '${oidc_id}',
       client_secret: '${oidc_secret}',
-      redirect_uris: [ 'https://${web_host}/auth' ],
+      redirect_uris: [ 'https://' + hostnames[0] + '/auth' ],
     },
     email_domain: '${oidc_email_domain}',
   },

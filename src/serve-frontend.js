@@ -17,10 +17,11 @@ const config = require('../config');
 const logger = require('./logger');
 const omnivore = require('./omnivore');
 const serve_course = require('./serve-course');
+const serve_redirect = require('./serve-redirect');
 
 const log = logger.log.child({ in: 'serve-frontend' });
 
-async function createAppServer(course) {
+async function createAppServer(hosturl, course) {
   omnivore.types.assert(course, 'function');
   
   const passport = new Passport();
@@ -39,6 +40,13 @@ async function createAppServer(course) {
   
   app.set('view engine', 'pug');
   app.set('x-powered-by', false);
+  
+  app.use((req, res, next) => {
+    if (req.hostname !== config.hostnames[0]) {
+      return res.redirect(307, `${hosturl}${req.url}`);
+    }
+    next();
+  });
   
   app.use(favicon('web/favicon.ico'));
   let statics = express.static('web');
@@ -172,14 +180,12 @@ async function createCourseProxy(hosturl) {
 
 exports.main = async function main() {
   const port = config.env === 'production' ? 443 : 4443;
-  const hosturl = `https://${config.hostname}${port === 443 ? '' : `:${port}`}`;
+  const hosturl = `https://${config.hostnames[0]}${port === 443 ? '' : `:${port}`}`;
   const course = await createCourseProxy(hosturl);
-  const server = await createAppServer(course);
+  const server = await createAppServer(hosturl, course);
   server.listen(port, () => log.info({ address: server.address() }, 'listening'));
   
-  const redirect = express();
-  redirect.get('*', (req, res) => res.redirect(hosturl + req.path));
-  http.createServer(redirect).listen(config.env === 'production' ? 80 : 8080);
+  serve_redirect.listen(hosturl, config.env === 'production' ? 80 : 8080);
 }
 
 if (require.main === module) {

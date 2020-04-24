@@ -1,5 +1,5 @@
 module.exports = {
-  hostname: 'omnivore.example.com',
+  hostnames: [ 'omnivore.example.com' ],
   db: {
     host: '/var/run/postgresql',
   },

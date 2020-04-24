@@ -4,7 +4,7 @@ variable "region" {}
 variable "access_key" {}
 variable "secret_key" {}
 
-variable "web_host" {}
+variable "web_hosts" {}
 variable "le_contact" {}
 variable "oidc_host" {}
 variable "oidc_id" {}
@@ -279,7 +279,7 @@ data "template_file" "postgres" {
 data "template_file" "env_production" {
   template = file("../config/env-production-template.js")
   vars = {
-    web_host = var.web_host
+    web_hosts = join(",", var.web_hosts)
     oidc_host = var.oidc_host
     oidc_id = var.oidc_id
     oidc_secret = var.oidc_secret
@@ -300,7 +300,7 @@ resource "null_resource" "web_provision" {
     private_key = file("~/.ssh/aws_${local.app}")
   }
   provisioner "remote-exec" {
-    inline = ["/var/${local.app}/setup/production-provision.sh ${local.app} ${local.name} ${var.web_host} ${var.le_contact} ${aws_efs_file_system.tls.id}"]
+    inline = ["/var/${local.app}/setup/production-provision.sh ${local.app} ${local.name} ${join(",", var.web_hosts)} ${var.le_contact} ${aws_efs_file_system.tls.id}"]
   }
 }
 
