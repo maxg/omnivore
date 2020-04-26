@@ -112,6 +112,7 @@ resource "aws_db_instance" "default" {
   identifier = local.name
   allocated_storage = 5
   max_allocated_storage = 10
+  apply_immediately = true
   storage_type = "gp2"
   engine = "postgres"
   engine_version = "11"
