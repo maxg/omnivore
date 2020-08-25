@@ -20,7 +20,7 @@ sudo -u postgres psql -d template1 -c "CREATE EXTENSION ltree"
 # pgBadger
 pgbadger_tag=$(
   curl --silent --head https://github.com/darold/pgbadger/releases/latest |
-    grep '^Location: ' | grep -o '[^/]*$' | tr -d '\r'
+    grep -i '^Location: ' | grep -o '[^/]*$' | tr -d '\r'
 )
 pgbadger_zip="$pgbadger_tag.zip"
 (
