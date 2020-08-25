@@ -215,7 +215,7 @@ resource "aws_key_pair" "app" {
 }
 
 resource "aws_instance" "web" {
-  instance_type = "t3.micro"
+  instance_type = "t3a.micro"
   ami = data.aws_ami.web.id
   vpc_security_group_ids = [aws_security_group.web.id]
   subnet_id = aws_subnet.a.id
