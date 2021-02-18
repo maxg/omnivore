@@ -135,9 +135,9 @@ exports.createApp = function createApp(hosturl, omni) {
     let authuser = res.locals.authuser = req.header(x_auth_user);
     if ( ! authuser) { return next(new Error(`missing ${x_auth_user} header`)); }
     res.set(x_auth_user, authuser);
-    omni.memo.allStaff((err, staff) => {
+    omni.memo.user(authuser, (err, user) => {
       if (err) { return next(err); }
-      res.locals.authstaff = staff.has(authuser);
+      res.locals.authstaff = user.on_staff;
       next();
     });
   });
@@ -161,6 +161,17 @@ exports.createApp = function createApp(hosturl, omni) {
     }
     next();
   }
+  
+  app.get('/u/:username/*', (req, res, next) => {
+    omni.memo.user(req.params.username, (err, user) => {
+      if (err) { return next(err); }
+      res.locals.pageuser = user;
+      res.locals.pageuserdata = [ 'staff', 'roster' ].map(p => {
+        return `${user[`on_${p}`] ? 'on' : 'off'}-${p}`;
+      }).join(' ');
+      next();
+    });
+  });
   
   app.get('/u/:username/:key(*)', authorize, (req, res, next) => {
     let spec = {

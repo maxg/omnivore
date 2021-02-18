@@ -1180,6 +1180,48 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('#user()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 10, cb),
+      ], done);
+    });
+    
+    it('should return user', done => {
+      omni.user('alice', bail(done, result => {
+        result.should.read({ username: 'alice', exists: true, on_roster: false, on_staff: false });
+        done();
+      }));
+    });
+    
+    it('should return staff user', done => {
+      omni.user('staffer', bail(done, result => {
+        result.should.read({ username: 'staffer', exists: false, on_roster: false, on_staff: true });
+        done();
+      }));
+    });
+    
+    it('should return nonexistent user', done => {
+      omni.user('zach', bail(done, result => {
+        result.should.read({ username: 'zach', exists: false, on_roster: false, on_staff: false });
+        done();
+      }));
+    });
+    
+    it('should memoize user', done => {
+      async.series([
+        cb => omni.memo.user('alice', cb),
+        cb => { sandbox.stub(omni, 'user').throws(); cb(); },
+        cb => omni.memo.user('alice', cb),
+      ], bail(done, results => {
+        results[0].should.read({ username: 'alice' });
+        results[2].should.read({ username: 'alice' });
+        done();
+      }));
+    });
+  });
+  
   describe('#users()', () => {
     
     beforeEach(done => {

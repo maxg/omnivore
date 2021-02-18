@@ -72,6 +72,21 @@ body.staffpage nav.navbar {
   background: rgb(235, 127, 0);
 }
 
+body[data-page-user~=off-staff][data-page-user~=off-roster] {
+  background: rgba(250, 250, 250, 0.5);
+}
+body[data-page-user~=off-staff][data-page-user~=off-roster] nav.navbar {
+  background: rgb(123, 123, 123);
+  color: rgb(250, 250, 250);
+}
+body[data-page-user~=off-staff][data-page-user~=off-roster] nav.navbar .navbar-link {
+  color: rgb(250, 250, 250);
+}
+
+body.staffpage[data-page-user~=off-staff][data-page-user~=off-roster] nav.navbar {
+  background: rgb(179, 123, 61);
+}
+
 .pre-wrap {
   white-space: pre-wrap;
 }

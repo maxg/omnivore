@@ -84,7 +84,7 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config, create) {
     this.emit('ready');
   });
   
-  this._memo('agent', 'allStaff');
+  this._memo('agent', 'allStaff', 'user');
   if (this._config.debug_function_time) {
     this._time(
       '_add', '_multiadd',
@@ -728,9 +728,18 @@ Omnivore.prototype._get_user_rows = types.check([ pg.Client ], [ 'array' ],
   ], done);
 });
 
+Omnivore.prototype.user = client(
+                          types.check([ pg.Client, 'username' ], [ 'object' ],
+                          function _user(client, username, done) {
+  async.waterfall([
+    cb => this._users(client, [ username ], cb),
+    (users, cb) => cb(null, users[0]),
+  ], done);
+}));
+
 Omnivore.prototype.users = client(
                            types.check([ pg.Client, 'array' ], [ 'array' ],
-                           function _users(client, usernames, done) {
+                           Omnivore.prototype._users = function _users(client, usernames, done) {
   async.waterfall([
     cb => client.logQuery({
       name: 'users-select-users',
