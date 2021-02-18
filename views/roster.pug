@@ -5,7 +5,7 @@ append head
 
 append content
   
-  p Roster
+  p Roster (#[+plural(roster.length, 'user')])
   
   form(method='post')
     p: textarea.form-control(name='roster', rows=20)= roster.join('\n')
