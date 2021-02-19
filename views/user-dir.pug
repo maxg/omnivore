@@ -5,6 +5,16 @@ append head
 
 append content
   
+  if key === '/'
+    div.explain
+      table
+        tbody
+          tr
+            if pageuser.on_staff
+              td [staff] in #{course}
+            else if ! pageuser.on_roster
+              td [&ne;] not on the #{course} roster
+  
   p.key: +keynav(key)
   
   if dirs.length

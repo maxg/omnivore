@@ -245,8 +245,10 @@ table.sheet td[data-type=string] {
 
 .explain {
   float: right;
-  background: rgb(248, 242, 220);
   padding: 2px;
+}
+body.staffpage .explain {
+  background: rgb(248, 242, 220);
 }
 
 .explain table {
@@ -260,6 +262,8 @@ table.sheet td[data-type=string] {
   bottom: 0;
   right: 0;
   width: 20px;
+}
+body.staffpage .explain table:after {
   background: linear-gradient(to right, rgba(248, 242, 220, 0), rgb(248, 242, 220));
 }
 
