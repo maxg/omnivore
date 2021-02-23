@@ -2,6 +2,7 @@ include mixins
 
 each row in rows
   tr(data-stream-user=row.username)
+    td.roster(data-off=!(row.on_roster || row.on_staff))
     td.user: a(href=`/${course}/u/${row.username}${row.key}`)= row.username
     td.value(data-type=types.which(row.value, types.value_types)): +value(row.value)
     td.ts: +ts(row.ts)

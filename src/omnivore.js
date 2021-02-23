@@ -294,10 +294,12 @@ Omnivore.prototype._get_grade_rows = types.check([ pg.Client, 'spec' ], [ 'array
   async.waterfall([
     cb => client.logQuery({
       name: 'get-select-grades',
-      text: `SELECT * FROM grades
+      text: `SELECT *, COALESCE(is_on_staff, FALSE) AS on_staff FROM grades
+             NATURAL LEFT JOIN
+             (SELECT *, TRUE AS is_on_staff FROM staff) staff
              WHERE ($1 IS NULL OR username = $1) AND (($2 IS NULL AND NOT key ~ '_.*') OR key = $2)
                    AND (visible OR $3)
-             ORDER BY username, key`,
+             ORDER BY on_roster DESC, on_staff ASC, username, key`,
       types: [ types.pg.TEXT, types.pg.LTREE, types.pg.BOOL ],
       values: [ spec.username, spec.key, spec.hidden ],
     }, cb),
@@ -312,9 +314,11 @@ Omnivore.prototype.multiget = client(transaction(
   async.waterfall([
     cb => client.logQuery({
       name: 'multiget-select-grades',
-      text: `SELECT * FROM grades
+      text: `SELECT *, COALESCE(is_on_staff, FALSE) AS on_staff FROM grades
+             NATURAL LEFT JOIN
+             (SELECT *, TRUE AS is_on_staff FROM staff) staff
              WHERE ($1 IS NULL OR username = $1) AND (key ? $2) AND (on_roster OR $3) AND (visible OR $4)
-             ORDER BY username, key`,
+             ORDER BY on_roster DESC, on_staff ASC, username, key`,
       types: [ types.pg.TEXT, types.pg.LQUERYarray, types.pg.BOOL ],
       values: [ spec.username, keys, ! spec.only_roster, spec.hidden ],
     }, cb),

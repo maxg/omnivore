@@ -205,6 +205,7 @@ a.csv::before { content: '[csv]'; }
 }
 
 .roster[data-on]::before { content: '[=] '; }
+.roster[data-off]::before { content: '[\2260] '; }
 
 .staffer[data-on]::before { content: '[staff] '; }
 
