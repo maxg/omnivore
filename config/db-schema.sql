@@ -66,6 +66,9 @@ BEGIN
     IF EXISTS (SELECT 1 FROM keys WHERE key <@ NEW.key) THEN
         RAISE EXCEPTION 'key % is a prefix of an existing key', NEW.key;
     END IF;
+    IF EXISTS (SELECT 1 FROM keys WHERE key @> NEW.key) THEN
+        RAISE EXCEPTION 'key % is a suffix of an existing key', NEW.key;
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

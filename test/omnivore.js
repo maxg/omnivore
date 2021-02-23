@@ -594,12 +594,12 @@ describe('Omnivore', function() {
       
       beforeEach(done => {
         async.series([
-          cb => omni.compute('/test', 'gamma', [ 'alpha/*', 'beta/*' ], (a, b) => `${a};${b}`, cb),
+          cb => omni.compute('/test', 'gamma', [ 'delta/*', 'epsilon/*' ], (a, b) => `${a};${b}`, cb),
           cb => omni.active('/test/*/2', now, cb),
           cb => omni.visible('/test/*', now, cb),
-          cb => omni.add('tester', 'alice', '/test/alpha/1', now, 'A1', cb),
-          cb => omni.add('tester', 'alice', '/test/alpha/2', now, 'A2', cb),
-          cb => omni.add('tester', 'alice', '/test/beta/1', now, 'B1', cb),
+          cb => omni.add('tester', 'alice', '/test/delta/1', now, 'A1', cb),
+          cb => omni.add('tester', 'alice', '/test/delta/2', now, 'A2', cb),
+          cb => omni.add('tester', 'alice', '/test/epsilon/1', now, 'B1', cb),
         ], done);
       });
       
