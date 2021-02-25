@@ -70,6 +70,27 @@ Notifier.prototype.added = webhook(
   });
 });
 
+Notifier.prototype.roster = webhook(
+                            function _roster(webhook, agent, usernames, upload) {
+  omnivore.types.assert(webhook, slack.IncomingWebhook);
+  omnivore.types.assert(agent, 'agent');
+  omnivore.types.assert(usernames, 'username_array');
+  omnivore.types.assert(upload, 'object|undefined');
+  
+  let text = [
+    [
+      `[${this._omni.course}]`,
+      agent,
+      `updated the <${this._hosturl}/${this._omni.course}/roster/|roster>`,
+    ].join(' '),
+    ':bust_in_silhouette: ' + usernames.length,
+  ].join('\n');
+  
+  webhook.send({ text }, err => {
+    if (err) { this._log.warn({ err }, 'notifying roster'); }
+  });
+});
+
 Notifier.prototype.error = webhook(
                            function _error(webhook, err, req, res) {
   let text = [

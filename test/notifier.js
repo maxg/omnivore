@@ -92,6 +92,37 @@ describe('Notifier', function() {
     });
   });
   
+  describe('#roster()', () => {
+    
+    it('should POST to Slack', done => {
+      slacker.expect(req => {
+        req.method.should.eql('POST');
+        req.url.should.eql('/A/B/C');
+        req.body.should.read({
+          username: 'omnivore',
+          channel: slack_channel,
+          text: /roster/,
+        });
+        done();
+      });
+      notify.roster('alyssa', [ 'ben' ]);
+    });
+    
+    it('should link to roster', done => {
+      slacker.expect(req => {
+        req.body.should.read({ text: /<http:\/\/localhost\/\S+\/roster\/\|.*>/ });
+        done();
+      });
+      notify.roster('alyssa', [ 'ben' ], {});
+    });
+    
+    it(`should ignore ${missing_config}`, done => {
+      sandbox.stub(slack, 'IncomingWebhook').throws();
+      notify.roster('alyssa', [ 'ben' ]);
+      setTimeout(done, 1);
+    });
+  });
+  
   describe('#error()', () => {
     
     it('should POST to Slack', done => {
