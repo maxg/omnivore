@@ -79,7 +79,7 @@ describe('Notifier', function() {
     
     it('should link to upload preview', done => {
       slacker.expect(req => {
-        req.body.should.read({ text: /<http:\/\/localhost\/up\/123|.*>/ });
+        req.body.should.read({ text: /<http:\/\/localhost\/up\/123\|.*>/ });
         done();
       });
       notify.added('alyssa', [], { path: '/up/123' });
