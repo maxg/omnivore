@@ -45,7 +45,13 @@ Notifier.prototype.added = webhook(
   omnivore.types.assert(upload, 'object|undefined');
   
   let users = sorted_values(rows.map(row => row.username));
+  let userlinks = users.length > 5 ? `${users.length} users` : users.map(u => {
+    return `<${this._hosturl}/${this._omni.course}/u/${u}|${u}>`;
+  }).join(', ');
   let keys = sorted_values(rows.map(row => row.key));
+  let keylinks = keys.length > 5 ? `${keys.length} keys` : keys.map(k => {
+    return `<${this._hosturl}/${this._omni.course}/grades${k}|${k}>`;
+  }).join(', ');
   let text = [
     [
       `[${this._omni.course}]`,
@@ -55,8 +61,8 @@ Notifier.prototype.added = webhook(
       upload ? (upload.path ? `<${this._hosturl + upload.path}|upload>` : 'upload') : false,
       upload && upload.username != agent ? `by ${upload.username}` : false,
     ].filter(text => text).join(' '),
-    ':bust_in_silhouette: ' + (users.length > 5 ? `${users.length} users` : users.join(', ')),
-    ':key: ' + (keys.length > 5 ? `${keys.length} keys` : keys.join(', ')),
+    ':bust_in_silhouette: ' + userlinks,
+    ':key: ' + keylinks,
   ].join('\n');
   
   webhook.send({ text }, err => {
