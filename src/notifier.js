@@ -48,6 +48,7 @@ Notifier.prototype.added = webhook(
   let keys = sorted_values(rows.map(row => row.key));
   let text = [
     [
+      `[${this._omni.course}]`,
       agent,
       `added ${rows.length} grade${rows.length == 1 ? '': 's'}`,
       upload ? 'from' : false,
@@ -66,6 +67,7 @@ Notifier.prototype.added = webhook(
 Notifier.prototype.error = webhook(
                            function _error(webhook, err, req, res) {
   let text = [
+    `[${this._omni.course}]`,
     (err && err.name ? err.name[0].toUpperCase() + err.name.substring(1) : 'Unknown error') + ':',
     err ? err.message : false,
     req ? `on ${req.method} ${req.url}` : false,
