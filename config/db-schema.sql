@@ -421,6 +421,10 @@ BEGIN
     DELETE FROM current_computed WHERE EXISTS(SELECT 1 FROM keys WHERE key = NEW.key AND active)
                                        AND key IN (SELECT output FROM computations WHERE base @> NEW.key AND NEW.key ? inputs)
                                        AND username = NEW.username;
+    INSERT INTO precompute_queue
+    SELECT NEW.username, output FROM computations WHERE EXISTS(SELECT 1 FROM keys WHERE key = NEW.key AND active)
+                                                        AND base @> NEW.key AND NEW.key ? inputs
+    ON CONFLICT DO NOTHING;
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
