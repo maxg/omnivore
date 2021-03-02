@@ -312,17 +312,8 @@ Omnivore.prototype.multiget = client(transaction(
                               types.translate([ pg.Client, 'key_array', 'spec' ], [ 'array' ],
                               Omnivore.prototype._multiget = function _multiget(client, keys, spec, done) {
   async.waterfall([
-    cb => client.logQuery({
-      name: 'multiget-select-grades',
-      text: `SELECT *, COALESCE(is_on_staff, FALSE) AS on_staff FROM grades
-             NATURAL LEFT JOIN
-             (SELECT *, TRUE AS is_on_staff FROM staff) staff
-             WHERE ($1 IS NULL OR username = $1) AND (key ? $2) AND (on_roster OR $3) AND (visible OR $4)
-             ORDER BY on_roster DESC, on_staff ASC, username, key`,
-      types: [ types.pg.TEXT, types.pg.LQUERYarray, types.pg.BOOL ],
-      values: [ spec.username, keys, ! spec.only_roster, spec.hidden ],
-    }, cb),
-    (result, cb) => this._current(client, result.rows, cb),
+    cb => this._multiget_grade_rows(client, keys, spec, cb),
+    (rows, cb) => this._current(client, rows, cb),
     (rows, cb) => {
       let results = [];
       let users = {};
@@ -336,6 +327,66 @@ Omnivore.prototype.multiget = client(transaction(
     },
   ], done);
 })));
+
+// stream data points
+Omnivore.prototype.multistream = client(
+                                 types.translate([ pg.Client, 'key_array', 'spec' ], [ 'array', 'object|undefined' ],
+                                 function _multistream(client, keys, spec, done) {
+  this._multiget_grade_rows(client, keys, spec, (err, rows) => {
+    if (err) { return done(err); }
+    this._stream_current(rows, (err, rows, emitter) => {
+      if (err) { return done(err); }
+      let results = [];
+      let users = {};
+      for (let row of rows) {
+        if ( ! users[row.username]) {
+          results.push(users[row.username] = { username: row.username });
+        }
+        if ( ! ((row.raw_data || row.output) && ! row.created)) {
+          users[row.username][types.convertOut(row.key, 'key')] = types.convertOut(row, 'row');
+        }
+      }
+      if ( ! emitter) {
+        return done(null, results, undefined);
+      }
+      let result_keys = keys.map(key => types.convertOut(key, 'key'));
+      let results_emitter = new events.EventEmitter();
+      emitter.on('rows', rows => {
+        for (let row of rows) {
+          users[row.username][row.key] = row;
+        }
+        let ii = 0;
+        for ( ; ii < results.length; ii++) {
+          if ( ! result_keys.every(key => results[ii][key])) {
+            break;
+          }
+        }
+        if (ii > 0) {
+          results_emitter.emit('rows', results.splice(0, ii));
+        }
+      });
+      emitter.on('end', () => results_emitter.emit('end'));
+      done(null, results, results_emitter);
+    });
+  });
+}));
+
+Omnivore.prototype._multiget_grade_rows = types.check([ pg.Client, 'key_array', 'spec' ], [ 'array' ],
+                                          function _multiget_grade_rows(client, keys, spec, done) {
+    async.waterfall([
+    cb => client.logQuery({
+      name: 'multiget-select-grades',
+      text: `SELECT *, COALESCE(is_on_staff, FALSE) AS on_staff FROM grades
+             NATURAL LEFT JOIN
+             (SELECT *, TRUE AS is_on_staff FROM staff) staff
+             WHERE ($1 IS NULL OR username = $1) AND (key ? $2) AND (on_roster OR $3) AND (visible OR $4)
+             ORDER BY on_roster DESC, on_staff ASC, username, key`,
+      types: [ types.pg.TEXT, types.pg.LQUERYarray, types.pg.BOOL ],
+      values: [ spec.username, keys, ! spec.only_roster, spec.hidden ],
+    }, cb),
+    (result, cb) => cb(null, result.rows),
+  ], done);
+});
 
 // get child data points
 Omnivore.prototype.children = client(transaction(

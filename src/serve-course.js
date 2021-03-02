@@ -315,12 +315,17 @@ exports.createApp = function createApp(hosturl, omni) {
     let prefix = omnivore.types.common(res.locals.keys).slice(1);
     let filename = `${omni.course}-${prefix || 'grades'}.csv`.replace(/\//g, '-');
     let spec = { only_roster: !! req.query.roster, hidden: true };
-    omni.multiget(res.locals.keys, spec, (err, rows) => {
+    omni.multistream(res.locals.keys, spec, (err, pre_rows, emitter) => {
       if (err) { return next(err); }
       res.attachment(filename);
-      omnivore.csv.stringify(res.locals.keys, rows, [
+      let comment = [
         `exported ${omnivore.types.dateTimeString(new Date())} by ${res.locals.authuser}`
-      ]).pipe(res);
+      ];
+      if (emitter) {
+        omnivore.csv.streamify(res.locals.keys, emitter, comment).pipe(res);
+      } else {
+        omnivore.csv.stringify(res.locals.keys, pre_rows, comment).pipe(res);
+      }
     });
   });
   

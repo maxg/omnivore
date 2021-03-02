@@ -769,6 +769,37 @@ describe('Omnivore', function() {
       }));
     });
     
+    it('should return available data', done => {
+      omni.get({ username: 'bob', key: '/test/beta' }, bail(done, () => {
+        omni.stream({ username: 'bob', key: '/test/beta' }, bail(done, (pre_rows, emitter) => {
+          pre_rows.should.read([
+            { username: 'bob', key: '/test/beta', ts: now, value: 40 },
+          ]);
+          should.not.exist(emitter);
+          done();
+        }));
+      }));
+    });
+    
+    it('should emit unavailable data', done => {
+      omni.get({ username: 'bob', key: '/test/beta' }, bail(done, () => {
+        omni.stream({ key: '/test/beta' }, bail(done, (pre_rows, emitter) => {
+          pre_rows.should.read([
+            { username: 'alice', key: '/test/beta', ts: null, value: null },
+            { username: 'bob', key: '/test/beta', ts: now, value: 40 },
+          ]);
+          let found = [];
+          emitter.on('rows', post_rows => found.push(...post_rows));
+          emitter.on('end', () => {
+            found.should.read([
+              { username: 'alice', key: '/test/beta', ts: now, value: 50 },
+            ]);
+            done();
+          });
+        }));
+      }));
+    });
+    
     it('should return data concurrently', done => {
       let step = () => { step = done };
       let callback = bail(done, (pre_rows, emitter) => {
@@ -817,6 +848,108 @@ describe('Omnivore', function() {
     it('should not return hidden output');
     
     it('should limit users to roster');
+  });
+  
+  describe('#multistream()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'yolanda', '/test/beta', now, 30, cb),
+        cb => omni.add('tester', 'zach', '/test/gamma', now, 0, cb),
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 100, cb),
+        cb => omni.add('tester', 'bob', '/test/alpha', now, 80, cb),
+        cb => omni.compute('/test', 'beta', [ 'alpha' ], alpha => alpha / 2, cb),
+        cb => omni.active('/test/alpha', now, cb),
+        cb => omni.visible('/test/*', now, cb),
+      ], done);
+    });
+    
+    it('should return values for user + keys', done => {
+      omni.multistream([ '/test/alpha', '/test/beta' ], { username: 'alice' }, bail(done, (pre_rows, emitter) => {
+        pre_rows.should.read([
+          { username: 'alice', '/test/alpha': undefined, '/test/beta': undefined },
+        ]);
+        let expected = [
+          { username: 'alice', '/test/alpha': { value: 100 }, '/test/beta': { value: 50 } },
+        ];
+        let found = [];
+        emitter.on('rows', post_rows => found.push(...post_rows));
+        emitter.on('end', () => {
+          found.should.read(expected);
+          done();
+        });
+      }));
+    });
+    
+    it('should return values for keys', done => {
+      omni.multistream([ '/test/alpha', '/test/beta' ], {}, bail(done, (pre_rows, emitter) => {
+        pre_rows.should.read([
+          { username: 'alice', '/test/alpha': undefined, '/test/beta': undefined },
+          { username: 'bob', '/test/alpha': undefined, '/test/beta': undefined },
+          { username: 'yolanda', '/test/alpha': { value: null }, '/test/beta': undefined },
+          { username: 'zach', '/test/alpha': { value: null }, '/test/beta': undefined },
+        ]);
+        let expected = [
+          { username: 'alice', '/test/alpha': { value: 100 }, '/test/beta': { value: 50 } },
+          { username: 'bob', '/test/alpha': { value: 80 }, '/test/beta': { value: 40 } },
+          { username: 'yolanda', '/test/alpha': { value: null }, '/test/beta': { value: 30 } },
+          { username: 'zach', '/test/alpha': { value: null }, '/test/beta': { value: 0 } },
+        ];
+        let found = [];
+        emitter.on('rows', post_rows => found.push(...post_rows));
+        emitter.on('end', () => {
+          found.should.read(expected);
+          done();
+        });
+      }));
+    });
+    
+    it('should return available data', done => {
+      omni.get({ username: 'bob', key: '/test/beta' }, bail(done, () => {
+        omni.multistream([ '/test/beta' ], { username: 'bob' }, bail(done, (pre_rows, emitter) => {
+          pre_rows.should.read([
+            { username: 'bob', '/test/beta': { value: 40 } },
+          ]);
+          should.not.exist(emitter);
+          done();
+        }));
+      }));
+    });
+    
+    it('should emit all data', done => {
+      omni.get({ username: 'bob', key: '/test/beta' }, bail(done, () => {
+        omni.multistream([ '/test/beta' ], {}, bail(done, (pre_rows, emitter) => {
+          pre_rows.should.read([
+            { username: 'alice', '/test/beta': undefined },
+            { username: 'bob', '/test/beta': { value: 40 } },
+            { username: 'yolanda', '/test/beta': undefined },
+            { username: 'zach', '/test/beta': undefined },
+            ]);
+          let found = [];
+          emitter.on('rows', post_rows => found.push(...post_rows));
+          emitter.on('end', () => {
+            found.should.read([
+              { username: 'alice', '/test/beta': { value: 50 } },
+              { username: 'bob', '/test/beta': { value: 40 } },
+              { username: 'yolanda', '/test/beta': { value: 30 } },
+              { username: 'zach', '/test/beta': { value: 0 } },
+            ]);
+            done();
+          });
+        }));
+      }));
+    });
+    
+    it('should return data concurrently', done => {
+      let step = () => { step = done };
+      let callback = bail(done, (pre_rows, emitter) => {
+        pre_rows.should.read([ { '/test/beta': undefined } ]);
+        emitter.on('rows', post_rows => post_rows.should.read([ { '/test/beta': { value: 0 } } ]));
+        emitter.on('end', () => step());
+      });
+      omni.multistream([ '/test/beta' ], { username: 'zach' }, callback);
+      omni.multistream([ '/test/beta' ], { username: 'zach' }, callback);
+    });
   });
   
   describe('#children()', () => {

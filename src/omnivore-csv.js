@@ -1,5 +1,7 @@
 'use strict';
 
+const events = require('events');
+
 const csv = require('csv');
 
 const types = require('./omnivore-types');
@@ -9,14 +11,28 @@ exports.stringify = function stringify(keys, rows, comments) {
   types.assert(rows, 'array');
   types.assert(comments, 'array|undefined');
   
+  let emitter = new events.EventEmitter();
+  let sheet = exports.streamify(keys, emitter, comments);
+  emitter.emit('rows', rows);
+  process.nextTick(() => emitter.emit('end'));
+  return sheet;
+};
+
+exports.streamify = function streamify(keys, emitter, comments) {
+  types.assert(keys, 'key_array');
+  types.assert(emitter, 'object');
+  types.assert(comments, 'array|undefined');
+  
   let sheet = csv.stringify({
     quotedString: true,
   });
   sheet.write([ 'username', ...keys, ...(comments || []) ]);
-  for (let row of rows) {
-    sheet.write([ row.username, ...keys.map(key => row[key].value) ]);
-  }
-  process.nextTick(() => sheet.end());
+  emitter.on('rows', rows => {
+    for (let row of rows) {
+      sheet.write([ row.username, ...keys.map(key => row[key].value) ]);
+    }
+  });
+  emitter.on('end', () => sheet.end());
   return sheet;
 };
 

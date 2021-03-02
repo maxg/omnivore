@@ -30,6 +30,12 @@ describe('Omnivore', function() {
       });
     });
     
+    describe('#streamify()', () => {
+      
+      it('should export header row');
+      it('should export values');
+    });
+    
     describe('#parse()', () => {
       
       new Map([
