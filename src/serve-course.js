@@ -449,6 +449,7 @@ exports.createApp = function createApp(hosturl, omni) {
     omni.setRoster(res.locals.authuser, valid, err => {
       if (err) { return next(err); }
       res.locals.upload.saved = new Date();
+      notify.roster(res.locals.authuser, valid, res.locals.upload);
       res.redirect(303, `/${omni.course}/users/`);
     });
   });
