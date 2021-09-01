@@ -16,7 +16,13 @@ variable "mit_secret" {}
 
 # terraform init -backend-config=terraform.tfvars
 terraform {
-  required_version = ">= 0.12"
+  required_version = "~> 1.0.5"
+  required_providers {
+    aws = { source = "hashicorp/aws" }
+    null = { source = "hashicorp/null" }
+    random = { source = "hashicorp/random" }
+    template = { source = "hashicorp/template" }
+  }
   backend "s3" {}
 }
 
