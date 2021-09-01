@@ -228,6 +228,7 @@ resource "aws_instance" "web" {
   user_data = data.template_cloudinit_config.config_web.rendered
   tags = { Name = local.name, Terraform = local.name }
   volume_tags = { Name = local.name }
+  provisioner "local-exec" { command = "sleep 45" } // wait for instance to boot
   lifecycle {
     create_before_destroy = true
     ignore_changes = [tags]
@@ -242,6 +243,7 @@ resource "aws_eip" "web" {
 resource "aws_eip_association" "web_address" {
   instance_id = aws_instance.web.id
   allocation_id = aws_eip.web.id
+  provisioner "local-exec" { command = "sleep 15" } // wait for EIP to switch
   lifecycle { create_before_destroy = true }
 }
 
