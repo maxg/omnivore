@@ -103,12 +103,12 @@ resource "aws_security_group" "db" {
   }
 }
 
-resource "random_string" "postgres_master_password" {
+resource "random_password" "postgres_master_password" {
   length = 16
   override_special = "!#$%&*()-_=+[]{}<>"
 }
 
-resource "random_string" "postgres_app_password" {
+resource "random_password" "postgres_app_password" {
   length = 16
   override_special = "!#$%&*()-_=+[]{}<>"
   keepers = { db_id = aws_db_instance.default.id }
@@ -128,7 +128,7 @@ resource "aws_db_instance" "default" {
   db_subnet_group_name = aws_db_subnet_group.default.id
   final_snapshot_identifier = "${local.name}-final"
   username = "postgres"
-  password = random_string.postgres_master_password.result
+  password = random_password.postgres_master_password.result
   tags = { Terraform = local.name }
 }
 
@@ -271,7 +271,7 @@ EOF
   }
 }
 
-resource "random_string" "web_secret" {
+resource "random_password" "web_secret" {
   length = 32
 }
 
@@ -280,8 +280,8 @@ data "template_file" "postgres" {
   vars = {
     id = aws_db_instance.default.id
     host = aws_db_instance.default.address
-    master_password = random_string.postgres_master_password.result
-    app_password = random_string.postgres_app_password.result
+    master_password = random_password.postgres_master_password.result
+    app_password = random_password.postgres_app_password.result
   }
 }
 
@@ -293,7 +293,7 @@ data "template_file" "env_production" {
     oidc_id = var.oidc_id
     oidc_secret = var.oidc_secret
     oidc_email_domain = var.oidc_email_domain
-    web_secret = random_string.web_secret.result
+    web_secret = random_password.web_secret.result
     mit_domain = var.mit_domain
     mit_id = var.mit_id
     mit_secret = var.mit_secret
