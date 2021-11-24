@@ -75,14 +75,12 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER keys_on_insert_prevent_prefixes BEFORE INSERT ON keys
     FOR EACH ROW EXECUTE PROCEDURE keys_prevent_prefixes();
 
--- TODO no overlapping *_rules? or latest rule applies? or ...?
-
 CREATE OR REPLACE FUNCTION keys_apply_rules() RETURNS TRIGGER AS $$
 BEGIN
-    NEW.active = EXISTS(SELECT 1 FROM active_rules WHERE NEW.key ~ keys AND after <= CURRENT_TIMESTAMP);
-    NEW.visible = EXISTS(SELECT 1 FROM visible_rules WHERE NEW.key ~ keys AND after <= CURRENT_TIMESTAMP);
-    NEW.deadline = (SELECT deadline FROM deadline_rules WHERE NEW.key ~ keys);
-    NEW.penalty_id = (SELECT penalty_id FROM deadline_rules WHERE NEW.key ~ keys);
+    NEW.active = (SELECT COALESCE(MIN(after) <= CURRENT_TIMESTAMP, FALSE) FROM active_rules WHERE NEW.key ~ keys);
+    NEW.visible = (SELECT COALESCE(MIN(after) <= CURRENT_TIMESTAMP, FALSE) FROM visible_rules WHERE NEW.key ~ keys);
+    NEW.deadline = (SELECT MIN(deadline) FROM deadline_rules WHERE NEW.key ~ keys);
+    NEW.penalty_id = (SELECT MIN(penalty_id) FROM deadline_rules WHERE NEW.key ~ keys);
     NEW.key_order = (SELECT MAX(key_order) FROM key_rules WHERE NEW.key ~ keys);
     NEW.promotion = (SELECT MAX(promotion) FROM key_rules WHERE NEW.key ~ keys);
     NEW.key_comment = (SELECT MAX(key_comment) FROM key_rules WHERE NEW.key ~ keys);
@@ -93,46 +91,48 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER keys_on_insert_apply_rules BEFORE INSERT ON keys
     FOR EACH ROW EXECUTE PROCEDURE keys_apply_rules();
 
-CREATE OR REPLACE RULE active_rules_on_insert_update AS ON INSERT TO active_rules
-    WHERE NEW.after <= CURRENT_TIMESTAMP
-    DO UPDATE keys SET active = TRUE WHERE key ~ NEW.keys;
+CREATE OR REPLACE FUNCTION active_rules_apply_rules() RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE keys SET active = (SELECT COALESCE(MIN(after) <= CURRENT_TIMESTAMP, FALSE) FROM active_rules WHERE key ~ keys)
+    WHERE key ~ NEW.keys OR key ~ OLD.keys;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER active_rules_on_insert_apply_rules AFTER INSERT ON active_rules
+    FOR EACH ROW EXECUTE PROCEDURE active_rules_apply_rules();
+CREATE TRIGGER active_rules_on_update_apply_rules AFTER UPDATE ON active_rules
+    FOR EACH ROW EXECUTE PROCEDURE active_rules_apply_rules();
+CREATE TRIGGER active_rules_on_delete_apply_rules AFTER DELETE ON active_rules
+    FOR EACH ROW EXECUTE PROCEDURE active_rules_apply_rules();
 
-CREATE OR REPLACE RULE active_rules_on_update_update_old AS ON UPDATE TO active_rules
-    WHERE OLD.keys::TEXT <> NEW.keys::TEXT
-    DO UPDATE keys SET active = FALSE WHERE key ~ OLD.keys AND NOT key ~ NEW.keys;
+CREATE OR REPLACE FUNCTION visible_rules_apply_rules() RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE keys SET visible = (SELECT COALESCE(MIN(after) <= CURRENT_TIMESTAMP, FALSE) FROM visible_rules WHERE key ~ keys)
+    WHERE key ~ NEW.keys OR key ~ OLD.keys;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER visible_rules_on_insert_apply_rules AFTER INSERT ON visible_rules
+    FOR EACH ROW EXECUTE PROCEDURE visible_rules_apply_rules();
+CREATE TRIGGER visible_rules_on_update_apply_rules AFTER UPDATE ON visible_rules
+    FOR EACH ROW EXECUTE PROCEDURE visible_rules_apply_rules();
+CREATE TRIGGER visible_rules_on_delete_apply_rules AFTER DELETE ON visible_rules
+    FOR EACH ROW EXECUTE PROCEDURE visible_rules_apply_rules();
 
-CREATE OR REPLACE RULE active_rules_on_update_update_new AS ON UPDATE TO active_rules
-    DO UPDATE keys SET active = NEW.after <= CURRENT_TIMESTAMP WHERE key ~ NEW.keys;
-
-CREATE OR REPLACE RULE active_rules_on_delete_update AS ON DELETE TO active_rules
-    DO UPDATE keys SET active = FALSE WHERE key ~ OLD.keys;
-
-CREATE OR REPLACE RULE visible_rules_on_insert_update AS ON INSERT TO visible_rules
-    WHERE NEW.after <= CURRENT_TIMESTAMP
-    DO UPDATE keys SET visible = TRUE WHERE key ~ NEW.keys;
-
-CREATE OR REPLACE RULE visible_rules_on_update_update_old AS ON UPDATE TO visible_rules
-    WHERE OLD.keys::TEXT <> NEW.keys::TEXT
-    DO UPDATE keys SET visible = FALSE WHERE key ~ OLD.keys AND NOT key ~ NEW.keys;
-
-CREATE OR REPLACE RULE visible_rules_on_update_update_new AS ON UPDATE TO visible_rules
-    DO UPDATE keys SET visible = NEW.after <= CURRENT_TIMESTAMP WHERE key ~ NEW.keys;
-
-CREATE OR REPLACE RULE visible_rules_on_delete_update AS ON DELETE TO visible_rules
-    DO UPDATE keys SET visible = FALSE WHERE key ~ OLD.keys;
-
-CREATE OR REPLACE RULE deadline_rules_on_insert_update AS ON INSERT TO deadline_rules
-    DO UPDATE keys SET deadline = NEW.deadline, penalty_id = NEW.penalty_id WHERE key ~ NEW.keys;
-
-CREATE OR REPLACE RULE deadline_rules_on_update_update_old AS ON UPDATE TO deadline_rules
-    WHERE OLD.keys::TEXT <> NEW.keys::TEXT
-    DO UPDATE keys SET deadline = NULL, penalty_id = NULL WHERE key ~ OLD.keys AND NOT key ~ NEW.keys;
-
-CREATE OR REPLACE RULE deadline_rules_on_update_update_new AS ON UPDATE TO deadline_rules
-    DO UPDATE keys SET deadline = NEW.deadline, penalty_id = NEW.penalty_id WHERE key ~ NEW.keys;
-
-CREATE OR REPLACE RULE deadline_rules_on_delete_update AS ON DELETE TO deadline_rules
-    DO UPDATE keys SET deadline = NULL, penalty_id = NULL WHERE key ~ OLD.keys;
+CREATE OR REPLACE FUNCTION deadline_rules_apply_rules() RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE keys SET deadline = (SELECT MIN(deadline) FROM deadline_rules WHERE key ~ keys),
+                    penalty_id = (SELECT MIN(penalty_id) FROM deadline_rules WHERE key ~ keys)
+    WHERE key ~ NEW.keys OR key ~ OLD.keys;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER deadline_rules_on_insert_apply_rules AFTER INSERT ON deadline_rules
+    FOR EACH ROW EXECUTE PROCEDURE deadline_rules_apply_rules();
+CREATE TRIGGER deadline_rules_on_update_apply_rules AFTER UPDATE ON deadline_rules
+    FOR EACH ROW EXECUTE PROCEDURE deadline_rules_apply_rules();
+CREATE TRIGGER deadline_rules_on_delete_apply_rules AFTER DELETE ON deadline_rules
+    FOR EACH ROW EXECUTE PROCEDURE deadline_rules_apply_rules();
 
 CREATE OR REPLACE FUNCTION key_rules_apply_rules() RETURNS TRIGGER AS $$
 BEGIN
@@ -255,9 +255,15 @@ CREATE TRIGGER current_data_on_insert_replace BEFORE INSERT ON current_data
 
 CREATE OR REPLACE RULE current_data_prevent_update AS ON UPDATE TO current_data DO INSTEAD NOTHING;
 
-CREATE OR REPLACE RULE keys_on_update_delete_stale_current AS ON UPDATE TO keys
-    WHERE NEW.deadline IS DISTINCT FROM OLD.deadline OR NEW.penalty_id IS DISTINCT FROM OLD.penalty_id
-    DO DELETE FROM current_data WHERE key = NEW.key;
+CREATE OR REPLACE FUNCTION current_data_delete() RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM current_data
+    WHERE key = NEW.key AND (NEW.deadline IS DISTINCT FROM OLD.deadline OR NEW.penalty_id IS DISTINCT FROM OLD.penalty_id);
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER keys_on_update_delete_stale_current AFTER UPDATE ON keys
+    FOR EACH ROW EXECUTE PROCEDURE current_data_delete();
 
 CREATE OR REPLACE RULE raw_data_on_insert_delete_stale_current AS ON INSERT TO raw_data
     DO DELETE FROM current_data WHERE key = NEW.key AND username = NEW.username;
@@ -385,8 +391,14 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER computation_rules_on_insert_insert_computations AFTER INSERT ON computation_rules
     FOR EACH ROW EXECUTE PROCEDURE computation_rules_new_rule();
 
-CREATE OR REPLACE RULE computation_rules_on_delete_delete_computations AS ON DELETE TO computation_rules
-  DO DELETE FROM computations WHERE output ~ (OLD.base::TEXT || '.' || OLD.output::TEXT)::LQUERY;
+CREATE OR REPLACE FUNCTION computation_rules_delete_rule() RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM computations WHERE output ~ (OLD.base::TEXT || '.' || OLD.output::TEXT)::LQUERY;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER computation_rules_on_delete_delete_computations AFTER DELETE ON computation_rules
+    FOR EACH ROW EXECUTE PROCEDURE computation_rules_delete_rule();
 
 CREATE OR REPLACE FUNCTION computations_ignore_duplicate() RETURNS TRIGGER AS $$
 BEGIN
@@ -444,9 +456,14 @@ CREATE TRIGGER keys_on_insert_delete_stale_computed AFTER INSERT ON keys
 CREATE TRIGGER keys_on_update_delete_stale_computed AFTER UPDATE ON keys
     FOR EACH ROW WHEN (NEW.active <> OLD.active) EXECUTE PROCEDURE new_key_delete_stale_computed();
 
-CREATE OR REPLACE RULE keys_on_delete_delete_stale_computed AS ON DELETE TO keys
-    WHERE OLD.active
-    DO DELETE FROM current_computed WHERE key IN (SELECT output FROM computations WHERE base @> OLD.key AND OLD.key ? inputs);
+CREATE OR REPLACE FUNCTION old_key_delete_stale_computed() RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM current_computed WHERE key in (SELECT output FROM computations WHERE base @> OLD.key AND OLD.key ? inputs);
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER keys_on_delete_delete_stale_computed AFTER DELETE ON keys
+    FOR EACH ROW WHEN (OLD.active) EXECUTE PROCEDURE old_key_delete_stale_computed();
 
 CREATE TRIGGER raw_data_on_insert_delete_stale_computed AFTER INSERT ON raw_data
     FOR EACH ROW EXECUTE PROCEDURE new_data_delete_stale_computed();
@@ -463,26 +480,36 @@ CREATE TRIGGER current_computed_on_insert_delete_stale_computed AFTER INSERT ON 
 CREATE TRIGGER current_computed_on_delete_delete_stale_computed AFTER DELETE ON current_computed
     FOR EACH ROW EXECUTE PROCEDURE old_data_delete_stale_computed();
 
-CREATE OR REPLACE RULE computations_on_insert_delete_stale_computed AS ON INSERT TO computations
-    DO DELETE FROM current_computed WHERE key IN (
+CREATE OR REPLACE FUNCTION new_computation_delete_stale_computed() RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM current_computed WHERE key IN (
         WITH RECURSIVE all_computations AS (
             SELECT NEW.output UNION ALL SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
         ) SELECT output FROM all_computations
     );
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE RULE computations_on_update_delete_stale_computed AS ON UPDATE TO computations
-    DO DELETE FROM current_computed WHERE key IN (
-        WITH RECURSIVE all_computations AS (
-            SELECT NEW.output UNION ALL SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
-        ) SELECT output FROM all_computations
-    );
-
-CREATE OR REPLACE RULE computations_on_delete_delete_stale_computed AS ON DELETE TO computations
-    DO DELETE FROM current_computed WHERE key IN (
+CREATE OR REPLACE FUNCTION old_computation_delete_stale_computed() RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM current_computed WHERE key IN (
         WITH RECURSIVE all_computations AS (
             SELECT OLD.output UNION ALL SELECT c.output FROM computations c, all_computations a WHERE a.output ? c.inputs
         ) SELECT output FROM all_computations
     );
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER computations_on_insert_delete_stale_computed AFTER INSERT ON computations
+    FOR EACH ROW EXECUTE PROCEDURE new_computation_delete_stale_computed();
+
+CREATE TRIGGER computations_on_update_delete_stale_computed AFTER UPDATE ON computations
+    FOR EACH ROW EXECUTE PROCEDURE new_computation_delete_stale_computed();
+
+CREATE TRIGGER computations_on_delete_delete_stale_computed AFTER DELETE ON computations
+    FOR EACH ROW EXECUTE PROCEDURE old_computation_delete_stale_computed();
 
 CREATE UNLOGGED TABLE IF NOT EXISTS precompute_queue (
     username TEXT NOT NULL REFERENCES users,
