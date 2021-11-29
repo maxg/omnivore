@@ -33,12 +33,13 @@ describe('serve-course', function() {
   after(done => omni.close(done));
   
   before(done => server.listen(0, 'localhost', done));
-  before(() => {
+  before(done => {
     req = request.defaults({
       baseUrl: 'http://localhost:' + server.address().port,
       followRedirect: false,
     });
     req.headers = headers => req.defaults({ headers });
+    req.get('/', done);
   });
   
   after(done => server.close(done));
