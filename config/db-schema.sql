@@ -234,8 +234,11 @@ CREATE TABLE IF NOT EXISTS current_data (
     agent TEXT NOT NULL REFERENCES agents,
     created TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (username, key),
-    CONSTRAINT current_data_refs_all_data FOREIGN KEY (username, key, ts, value, penalty_applied, agent) REFERENCES all_data (username, key, ts, value, penalty_applied, agent)
+    CONSTRAINT current_data_refs_raw_data FOREIGN KEY (username, key, ts, agent) REFERENCES raw_data (username, key, ts, agent),
+    -- TODO missing: CONSTRAINT current_data_refs_all_data FOREIGN KEY (username, key, ts, value, agent) REFERENCES all_data (username, key, ts, value, agent),
+    CONSTRAINT current_data_refs_all_data_with_penalty_applied FOREIGN KEY (username, key, ts, value, penalty_applied, agent) REFERENCES all_data (username, key, ts, value, penalty_applied, agent)
 );
+CREATE UNIQUE INDEX current_data_unique_with_null_penalty_applied ON current_data (username, key, ts, value, agent) WHERE penalty_applied IS NULL;
 CREATE INDEX current_data_key_gist ON current_data USING gist(key);
 
 -- TODO test this trigger!
