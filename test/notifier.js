@@ -139,6 +139,14 @@ describe('Notifier', function() {
       notify.error(new Error('{whoops}'));
     });
     
+    it('should include object details', done => {
+      slacker.expect(req => {
+        req.body.should.read({ attachments: [ { text: /Something has: gone wrong!/ } ] });
+        done();
+      });
+      notify.error({ name: 'something has', message: 'gone wrong!' });
+    });
+    
     it('should include request details', done => {
       slacker.expect(req => {
         req.body.should.read({ attachments: [ { text: /GET \/ .* user alyssa/ } ] });

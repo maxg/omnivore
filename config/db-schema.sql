@@ -578,3 +578,16 @@ CREATE OR REPLACE VIEW history AS
         SELECT username, key, ts, value, penalty_applied, created, FALSE AS raw, TRUE AS computed FROM current_computed
     ) combined USING (key)
 ;
+
+CREATE OR REPLACE FUNCTION destroy_key(destroyer wordtext, target_key LTREE) RETURNS SETOF keys AS $$
+BEGIN
+    DELETE FROM current_data WHERE key = target_key AND key ? (SELECT add FROM agents WHERE agent = destroyer);
+    ALTER TABLE all_data DISABLE RULE all_data_prevent_delete;
+    ALTER TABLE raw_data DISABLE RULE raw_data_prevent_delete;
+    DELETE FROM all_data WHERE key = target_key AND key ? (SELECT add FROM agents WHERE agent = destroyer);
+    DELETE FROM raw_data WHERE key = target_key AND key ? (SELECT add FROM agents WHERE agent = destroyer);
+    ALTER TABLE all_data ENABLE RULE all_data_prevent_delete;
+    ALTER TABLE raw_data ENABLE RULE raw_data_prevent_delete;
+    RETURN QUERY DELETE FROM keys WHERE key = target_key AND key ? (SELECT add FROM agents WHERE agent = destroyer) RETURNING *;
+END;
+$$ LANGUAGE plpgsql;

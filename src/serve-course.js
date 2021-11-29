@@ -301,6 +301,23 @@ exports.createApp = function createApp(hosturl, omni) {
   app.get('/grades/:key(*)/', (req, res, next) => res.redirect(301, `/${omni.course}${req.path.slice(0, -1)}`));
   app.get('/grades', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
   
+  app.get('/grades/:key(*).destroy', staffonly, (req, res, next) => {
+    async.auto({
+      keys: cb => omni.keys([ req.params.key ], cb),
+    }, (err, results) => {
+      if (err) { return next(err); }
+      res.render('staff-destroy', results);
+    });
+  });
+  
+  app.post('/grades/:key(*).destroy', staffonly, (req, res, next) => {
+    omni.destroy(res.locals.authuser, req.params.key, err => {
+      if (err) { return next(err); }
+      notify.error({ name: 'key destroyed', message: `${req.params.key} by user ${res.locals.authuser}` });
+      res.redirect(303, `/${omni.course}/grades${req.params.key}`);
+    });
+  });
+  
   app.get('/grades/:keys(*).csv', (req, res, next) => next());
   app.get('/grades/:queries(*).csv', staffonly, (req, res, next) => {
     if (res.locals.keys) { return next(); }

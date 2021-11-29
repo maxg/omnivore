@@ -18,6 +18,7 @@ append content
             td= row.penalty_id
             td.visible(data-on=row.visible)
             td.active(data-on=row.active)
+            td: a.pivot(href=`/${course}/grades${row.key}.destroy`) destroy
           if row.inputs && row.inputs.length
             tr: td(colspan=4) Computed from inputs:
             each input in row.inputs

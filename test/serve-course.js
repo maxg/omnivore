@@ -477,6 +477,72 @@ describe('serve-course', function() {
     });
   });
   
+  describe('GET /grades/:key.destroy', done => {
+    
+    let url = '/grades/test/class-1/nanoquiz.destroy';
+    
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
+    
+    it('should link to CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'staff-destroy' ]);
+        body.should.match(/grades\/test\/class-1\/nanoquiz\.csv/);
+        done();
+      }));
+    });
+  });
+  
+  describe('POST /grades/:key.destroy', () => {
+    
+    let url = '/grades/test/class-2/nanoquiz.destroy';
+    
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).post(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
+    
+    it('should require agent', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).post(url, bail(done, (res, body) => {
+        res.statusCode.should.eql(500);
+        app.render.templates().should.eql([ '500' ]);
+        omni.get({ key: '/test/class-2/nanoquiz', hidden: true }, bail(done, result => {
+          result.should.read([ { username: 'alice', value: 8 }, { username: 'bob', value: null } ]);
+          done();
+        }));
+      }));
+    });
+    
+    it('should redirect to key', done => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).post(url, bail(done, res => {
+        res.statusCode.should.eql(303);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}/grades/test/class-2/nanoquiz`);
+        done();
+      }));
+    });
+    
+    it('should delete key', done => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).post(url, bail(done, (res, body) => {
+        omni.keys([ '/test/class-2/nanoquiz' ], bail(done, result => {
+          result.should.read([ { key: '/test/class-2/nanoquiz', exists: false } ]);
+          done();
+        }));
+      }));
+    });
+  });
+  
   describe('GET /grades/:keys.csv', () => {
     
     let single_url = '/grades/test/class-1/nanoquiz.csv';

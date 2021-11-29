@@ -17,6 +17,9 @@ $('input[type=file]').on('dragleave drop', function(event) {
 $('textarea.txt-upload').on('input', function() {
   $(this).closest('form').find('.btn-upload').prop('disabled', false);
 });
+$('a.pre-download').on('click', function() {
+  $(this).closest('form').find('button').prop('disabled', false);
+});
 
 function updateFromStream(elt, html) {
   let user = 'data-stream-user';

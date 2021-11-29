@@ -989,6 +989,27 @@ Omnivore.prototype.compute = client(transaction(
   }, done);
 })));
 
+Omnivore.prototype.destroy = client(transaction(
+                             types.translate([ pg.Client, 'agent', 'key' ], [ 'number' ],
+                             function _destroy(client, agent, key, done) {
+  //console.log('destroy', key);
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'destroy-select-agents',
+      text: `SELECT agent FROM agents WHERE agent = $1 AND $2 ? add`,
+      values: [ agent, key ],
+      types: [ types.pg.TEXT, types.pg.LTREE ],
+    }, cb),
+    (result, cb) => result.rows.length ? cb(null, true) : cb(new Error(`agent ${agent} cannot delete key ${key}`)),
+    (_, cb) => client.logQuery({
+      name: 'destroy-call-destroy_key',
+      text: `SELECT destroy_key($1, $2)`,
+      values: [ agent, key ],
+    }, cb),
+    (result, cb) => cb(null, result.rowCount),
+  ], done);
+})));
+
 Omnivore.prototype.cron = client(
                           Omnivore.prototype._cron = function _cron(client, done) {
   //console.log('cron');

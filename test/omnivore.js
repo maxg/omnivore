@@ -1933,6 +1933,99 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('#destroy()', () => {
+    
+    beforeEach(done => {
+      async.series([
+        cb => omni.add('tester', 'alice', '/test/alpha', now, 80, cb),
+        cb => omni.add('tester', 'bob', '/test/alpha', now, 100, cb),
+        cb => omni.add('tester', 'bob', '/test/gamma', t_minus(now, 1), 70, cb),
+        cb => omni.compute('/test', 'beta', [ 'alpha' ], alpha => alpha, cb),
+      ], done);
+    });
+    
+    it('should delete key', done => {
+      async.series([
+        cb => omni.destroy('tester', '/test/gamma', cb),
+        cb => omni.get({ hidden: true }, cb),
+      ], bail(done, results => {
+        results.should.read([
+          1,
+          [ { key: '/test/alpha' }, { key: '/test/beta' }, { key: '/test/alpha' }, { key: '/test/beta' } ],
+        ]);
+        done();
+      }));
+    });
+    
+    it('should delete key + value', done => {
+      async.series([
+        cb => omni.get({ key: '/test/gamma', hidden: true }, cb),
+        cb => omni.destroy('tester', '/test/gamma', cb),
+        cb => omni.get({ key: '/test/gamma', hidden: true }, cb),
+      ], bail(done, results => {
+        results[0].should.read([ { key: '/test/gamma' }, { key: '/test/gamma' } ]);
+        results[2].should.read([]);
+        done();
+      }));
+    });
+    
+    it('should delete input', done => {
+      async.series([
+        cb => omni.active('/test/*', now, cb),
+        cb => omni.get({ key: '/test/beta', hidden: true }, cb),
+        cb => omni.destroy('tester', '/test/alpha', cb),
+        cb => omni.get({ key: '/test/beta', hidden: true }, cb),
+      ], bail(done, results => {
+        results[1].should.read([ { value: 80 }, { value: 100 } ]);
+        results[3].should.read([ { value: undefined }, { value: undefined } ]);
+        done();
+      }));
+    });
+    
+    it('should delete wildcard input', done => {
+      async.series([
+        cb => omni.active('/test/*', now, cb),
+        cb => omni.compute('/test', 'delta', [ 'alpha|beta|gamma' ], args => args.length, cb),
+        cb => omni.get({ key: '/test/delta', hidden: true }, cb),
+        cb => omni.destroy('tester', '/test/alpha', cb),
+        cb => omni.get({ key: '/test/delta', hidden: true }, cb),
+      ], bail(done, results => {
+        results[2].should.read([ { value: 3 }, { value: 3 } ]);
+        results[4].should.read([ { value: 2 }, { value: 2 } ]);
+        done();
+      }));
+    });
+    
+    it('should not delete output', done => {
+      async.series([
+        cb => omni.destroy('tester', '/test/beta', cb),
+      ], err => {
+        should.exist(err);
+        omni.get({ key: '/test/beta', hidden: true }, bail(done, rows => {
+          rows.should.read([
+            { username: 'alice', key: '/test/beta' }, { username: 'bob', key: '/test/beta' },
+          ]);
+          done();
+        }));
+      });
+    });
+    
+    it('should require creator agent', done => {
+      async.series([
+        cb => omni.add('root', 'alice', '/extra/epsilon', now, 0, cb),
+        cb => omni.destroy('tester', '/extra/epsilon', cb),
+      ], err => {
+        should.exist(err);
+        omni.get({ key: '/extra/epsilon', hidden: true }, bail(done, rows => {
+          rows.should.read([
+            { username: 'alice', key: '/extra/epsilon', value: 0 }, { username: 'bob', key: '/extra/epsilon' },
+          ]);
+          done();
+        }));
+      });
+    });
+  });
+  
   describe('#cron()', () => {
     
     beforeEach(done => {

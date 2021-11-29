@@ -1,0 +1,16 @@
+extends layout
+
+append head
+  title Destroy #{key} - #{course} - Omnivore
+
+append content
+  
+  .staff
+    each row in keys
+      p.key Destroy #[+key(row.key)]
+      if row.inputs && row.inputs.length
+        p Cannot destroy computed key
+      else
+        form(method='post')
+          p: a.csv.pre-download(href=`/${course}/grades${row.key}.csv`)  download data
+          p: button.btn.btn-default(disabled) Destroy
