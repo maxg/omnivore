@@ -15,6 +15,7 @@ append content
   
   .staff
     p Previewing uploaded grades
+      a.csv(href=`/${course}/upload/${upload_id}.csv`)
     p created #{upload.created} #[br] by #{upload.username} #[br] expires #[+ts(upload.timeout)]
     if ts
       p timestamped #{ts}

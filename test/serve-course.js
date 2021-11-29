@@ -758,11 +758,56 @@ describe('serve-course', function() {
       }));
     });
     
+    it('should link to CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(save_url, bail(done, (res, body) => {
+        body.should.containEql(save_url + '.csv');
+        done();
+      }));
+    });
+    
     it('should fail with missing upload', done => {
       req.headers({ [x_auth_user]: 'staffer' }).get(save_url.replace(/.{8}$/, '00000000'), bail(done, res => {
         res.statusCode.should.eql(404);
         app.render.templates().should.eql([ '404' ]);
         done();
+      }));
+    });
+  });
+  
+  describe('GET /upload/:upload_id.csv', () => {
+    
+    let upload_url = '/upload.csv';
+    let formData = { grades: { value: 'username,/foo\nalice,12.3\n', options: { filename: 'upload.csv' } } };
+    let csv_url;
+    
+    before(done => {
+      req.headers({ [x_auth_user]: 'staffer' }).post(upload_url, { formData }, (err, res) => {
+        csv_url = res.headers.location.replace(`/${course}`, '') + '.csv';
+        csv_url.should.startWith('/upload/');
+        done(err);
+      });
+    });
+    
+    it('should require staff', done => {
+      req.headers({ [x_auth_user]: 'alice' }).get(csv_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/permission denied/);
+        done();
+      }));
+    });
+    
+    it('should render CSV', done => {
+      req.headers({ [x_auth_user]: 'staffer' }).get(csv_url, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        let date = omnivore.types.dateTimeString(new Date());
+        csv.parse(body, { relax_column_count: true }, (err, sheet) => {
+          sheet.should.read([
+            [ 'username', '/foo', '', `created ${date} by staffer` ],
+            [ 'alice', '12.3' ],
+          ]);
+          done(err);
+        });
       }));
     });
   });

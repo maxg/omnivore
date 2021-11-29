@@ -21,7 +21,7 @@ const omnivore = require('./omnivore');
 const x_auth_user = exports.x_auth_user = 'X-Authenticated-User';
 const x_omni_sign = exports.x_omni_sign = 'X-Omnivore-Signed';
 
-const uuid_regex = /\w{8}(-\w{4}){3}-\w{12}/;
+const uuid_regex = /^\w{8}(-\w{4}){3}-\w{12}$/;
 
 // create a web frontend for an Omnivore backend
 exports.createApp = function createApp(hosturl, omni) {
@@ -81,6 +81,7 @@ exports.createApp = function createApp(hosturl, omni) {
   
   app.param('upload_id', (req, res, next, id) => {
     if( ! uuid_regex.test(id)) { return next('route'); }
+    res.locals.upload_id = id;
     next();
   });
   
@@ -433,6 +434,18 @@ exports.createApp = function createApp(hosturl, omni) {
         invalid: data.keys.length * data.rows.length - rows.length,
       });
     });
+  });
+  
+  app.get('/upload/:upload_id.csv', staffonly, get_upload, (req, res, next) => {
+    let data = res.locals.upload.data;
+    res.attachment(`${omni.course}-${res.locals.upload_id}.csv`.replace(/\//g, '-'));
+    omnivore.csv.stringify(data.keys, data.rows.map(row => Object.fromEntries([
+      [ 'username', row.username ],
+      ...data.keys.map((key, idx) => [ key, { value: row.values[idx] } ]),
+    ])), [
+      data.ts,
+      `created ${omnivore.types.dateTimeString(res.locals.upload.created)} by ${res.locals.upload.username}`
+    ]).pipe(res);
   });
   
   app.get('/roster/', staffonly, (req, res, next) => {
