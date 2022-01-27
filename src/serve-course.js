@@ -314,7 +314,7 @@ exports.createApp = function createApp(hosturl, omni) {
   app.post('/grades/:key(*).destroy', staffonly, (req, res, next) => {
     omni.destroy(res.locals.authuser, req.params.key, err => {
       if (err) { return next(err); }
-      notify.error({ name: 'key destroyed', message: `${req.params.key} by user ${res.locals.authuser}` });
+      notify.warning({ name: 'key destroyed', message: `${req.params.key} by user ${res.locals.authuser}` });
       res.redirect(303, `/${omni.course}/grades${req.params.key}`);
     });
   });

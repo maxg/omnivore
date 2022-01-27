@@ -123,6 +123,53 @@ describe('Notifier', function() {
     });
   });
   
+  describe('#warning()', () => {
+    
+    it('should POST to Slack', done => {
+      slacker.expect(req => {
+        req.method.should.eql('POST');
+        req.url.should.eql('/A/B/C');
+        req.body.should.read({
+          username: 'omnivore',
+          channel: slack_channel,
+          attachments: [ { color: 'warning', text: /Error: uh oh!/ } ],
+        });
+        done();
+      });
+      notify.warning(new Error('uh oh!'));
+    });
+    
+    it('should include object details', done => {
+      slacker.expect(req => {
+        req.body.should.read({ attachments: [ { text: /Something merits: your attention/ } ] });
+        done();
+      });
+      notify.warning({ name: 'something merits', message: 'your attention' });
+    });
+    
+    it('should ignore missing error', done => {
+      slacker.expect(req => {
+        req.body.should.read({ attachments: [ { text: /Unknown warning/ } ] });
+        done();
+      });
+      notify.warning(null);
+    });
+    
+    it('should ignore invalid inputs', done => {
+      slacker.expect(req => {
+        req.body.should.read({ attachments: [ { text: /Unknown warning/ } ] });
+        done();
+      });
+      notify.warning('err');
+    });
+    
+    it(`should ignore ${missing_config}`, done => {
+      sandbox.stub(slack, 'IncomingWebhook').throws();
+      notify.warning(new Error());
+      setTimeout(done, 1);
+    });
+  });
+  
   describe('#error()', () => {
     
     it('should POST to Slack', done => {

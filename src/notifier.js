@@ -91,6 +91,21 @@ Notifier.prototype.roster = webhook(
   });
 });
 
+Notifier.prototype.warning = webhook(
+                             function _warning(webhook, err) {
+  let text = [
+    `[${this._omni.course}]`,
+    (err && err.name ? err.name[0].toUpperCase() + err.name.substring(1) : 'Unknown warning') + ':',
+    err ? err.message : false,
+  ].filter(text => text).join(' ');
+  
+  webhook.send({
+    attachments: [ { fallback: text, color: 'warning', text } ],
+  }, err => {
+    if (err) { this._log.warn({ warn }, 'notifying warning'); }
+  });
+});
+
 Notifier.prototype.error = webhook(
                            function _error(webhook, err, req, res) {
   let text = [
