@@ -1,0 +1,21 @@
+include mixins
+
+each args in rows
+  tr(data-stream-user='result')
+    if args.err
+      td
+        p [ERROR]
+        p= args.err
+    if args.result
+      td
+        p [#{args.result.command} #[+plural(args.result.rowCount, 'row')]]
+        table
+          thead
+            tr
+              each field in args.result.fields
+                td= field.name
+          tbody
+            each row in args.result.rows
+              tr
+                each value in row
+                  td= value

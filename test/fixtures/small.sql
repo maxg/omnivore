@@ -1,6 +1,8 @@
 INSERT INTO staff VALUES ('nanoquizzer');
+INSERT INTO staff VALUES ('rootstaffer');
 
 INSERT INTO agents VALUES ('nanoquizzer', '', '{ "test.*{1}.nanoquiz" }', '{ "test.*{1}.nanoquiz" }');
+INSERT INTO agents VALUES ('rootstaffer', '', '{ "*" }', '{ "*" }');
 
 INSERT INTO visible_rules VALUES
     ('test.class_1.nanoquiz', CURRENT_TIMESTAMP - INTERVAL '3 day'),

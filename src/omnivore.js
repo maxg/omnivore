@@ -41,7 +41,8 @@ const Omnivore = exports.Omnivore = function Omnivore(course, config, create) {
     return this._log[ms < 50 ? 'debug' : ms < 250 ? 'info' : 'warn'].bind(this._log);
   };
   
-  this._pool = new pg.Pool(Object.assign({ database: course }, this._config.db));
+  this._db_config = Object.assign({ database: course }, this._config.db);
+  this._pool = new pg.Pool(this._db_config);
   
   this._functions = {
     'intrinsic/userinfo': () => ({}),
@@ -1009,6 +1010,52 @@ Omnivore.prototype.destroy = client(transaction(
     (result, cb) => cb(null, result.rowCount),
   ], done);
 })));
+
+Omnivore.prototype.unsafeExecute = client(
+                                   types.translate([ pg.Client, 'agent', 'string' ], [ 'number', 'object' ],
+                                   function _unsafeExecute(client, agent, sql, done) {
+  //console.log('unsafeExecute', sql);
+  client.logQuery({
+    name: 'unsafeExecute-select-agents',
+    text: `SELECT agent FROM agents WHERE agent = $1 AND add::TEXT[] @> '{ "*" }'`,
+    values: [ agent ],
+  }, (err, result) => {
+    if (err) { return done(err); }
+    if ( ! result.rows.length) { return done(new Error(`agent ${agent} cannot execute SQL`)); }
+    let emitter = new events.EventEmitter();
+    this._cancelable_execute(sql, (err, pid) => done(err, pid, emitter), (err, result) => {
+      emitter.emit('rows', [ { err, result } ]);
+      emitter.emit('end');
+    });
+  });
+}));
+
+Omnivore.prototype._cancelable_execute = client(transaction(
+                                         types.check([ pg.Client, 'string', 'function' ], [ 'object' ],
+                                         function _cancelable_execute(client, sql, pid_cb, done) {
+  client.logQuery('SELECT pg_backend_pid()', (err, pid) => {
+    if (err) {
+      pid_cb(err);
+      return done(err);
+    }
+    pid_cb(null, pid.rows[0].pg_backend_pid);
+    client.logQuery({ text: sql, rowMode: 'array' }, done);
+  });
+})));
+
+Omnivore.prototype.unsafeCancelExecution = types.translate([ 'agent', 'number' ], [ 'any' ],
+                                           function _unsafeCancelExecution(agent, pid, done) {
+  //console.log('unsafeCancelExecution', pid);
+  let client = new pg.Client(this._db_config);
+  async.waterfall([
+    cb => client.connect(cb),
+    (_, cb) => client.query({
+      text: 'SELECT pg_cancel_backend($1)',
+      values: [ pid ],
+    }, cb),
+    (result, cb) => client.end(err => cb(err, result)),
+  ], done);
+});
 
 Omnivore.prototype.cron = client(
                           Omnivore.prototype._cron = function _cron(client, done) {

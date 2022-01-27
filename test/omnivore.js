@@ -2026,6 +2026,68 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('#unsafeExecute()', () => {
+    
+    beforeEach(done => {
+      omni.pg((client, done) => client.query(fixtures('small'), done), done);
+    });
+    
+    it('should SELECT', done => {
+      omni.unsafeExecute('root', 'SELECT username FROM users ORDER BY username', bail(done, (backend_pid, emitter) => {
+        should.exist(backend_pid);
+        async.parallel([
+          cb => emitter.once('end', async.apply(cb, null)),
+          cb => emitter.once('rows', async.apply(cb, null)),
+        ], bail(done, results => {
+          results.should.read([
+            undefined,
+            [
+              {
+                err: null,
+                result: {
+                  command: 'SELECT',
+                  rowCount: 2,
+                  fields: [ { name: 'username' } ],
+                  rows: [ [ 'alice' ], [ 'bob' ] ],
+                },
+              },
+            ],
+          ]);
+          done();
+        }));
+      }));
+    });
+    
+    it('should require creator agent', done => {
+      omni.unsafeExecute('tester', 'SELECT * FROM users', (err, backend_pid, emitter) => {
+        should.exist(err);
+        should.not.exist(backend_pid);
+        should.not.exist(emitter);
+        done();
+      });
+    });
+  });
+  
+  describe('#unsafeCancelExecution()', () => {
+    it('should cancel execution', done => {
+      omni.unsafeExecute('root', 'SELECT pg_sleep(60)', bail(done, (backend_pid, emitter) => {
+        should.exist(backend_pid);
+        async.parallel([
+          cb => emitter.once('end', async.apply(cb, null)),
+          cb => emitter.once('rows', async.apply(cb, null)),
+          cb => omni.unsafeCancelExecution('root', backend_pid, cb),
+        ], bail(done, results => {
+          results.should.read([
+            undefined,
+            [ { err: { message: /cancel/ }, result: undefined } ],
+            {},
+          ]);
+          done();
+        }));
+      }));
+    });
+  });
+  
   describe('#cron()', () => {
     
     beforeEach(done => {

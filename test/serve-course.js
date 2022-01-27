@@ -937,4 +937,147 @@ describe('serve-course', function() {
       }));
     });
   });
+  
+  describe('GET /sql/:sql', () => {
+    
+    let url = '/sql/';
+    let sql = 'SELECT * FROM users;';
+    
+    it('should require staff creator agent', done => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).get(`${url}${sql}`, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/SQL execution/);
+        done();
+      }));
+    });
+    
+    it('should render query', done => {
+      req.headers({ [x_auth_user]: 'rootstaffer' }).get(`${url}${sql}`, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'sql' ]);
+        body.should.match(/SELECT \* FROM users;/);
+        done();
+      }));
+    });
+    
+    it('w/o / should redirect to query', done => {
+      req.headers({ [x_auth_user]: 'rootstaffer' }).get(url.split(/\/$/)[0], bail(done, (res, body) => {
+        res.statusCode.should.eql(301);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}${url}`);
+        done();
+      }));
+    });
+  });
+  
+  describe('POST /sql/', () => {
+    
+    let url = '/sql/';
+    let sql = 'SELECT * FROM users;';
+    let form = { sql };
+    
+    it('should require staff creator agent', done => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).post(url, { form }, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/SQL execution/);
+        done();
+      }));
+    });
+    
+    it('should redirect to execution', done => {
+      req.headers({ [x_auth_user]: 'rootstaffer' }).post(url, { form }, bail(done, (res, body) => {
+        res.statusCode.should.eql(307);
+        app.render.templates().should.eql([]);
+        res.headers.location.should.eql(`/${course}${url}${encodeURIComponent(sql)}`);
+        done();
+      }));
+    });
+  });
+  
+  describe('POST /sql/:sql', () => {
+    
+    let sql = 'SELECT * FROM users;';
+    let url = `/sql/${encodeURIComponent(sql)}`;
+    let form = { sql };
+    
+    it('should require staff creator agent', done => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).post(url, { form }, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ '401' ]);
+        body.should.match(/SQL execution/);
+        done();
+      }));
+    });
+    
+    it('should reject mismatched SQL', done => {
+      req.headers({ [x_auth_user]: 'rootstaffer' }).post(url.toLowerCase(), { form }, bail(done, (res, body) => {
+        res.statusCode.should.eql(500);
+        app.render.templates().should.eql([ '500' ]);
+        done();
+      }));
+    });
+    
+    it('should render query results', done => {
+      req.headers({ [x_auth_user]: 'rootstaffer' }).post(url, { form }, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'sql' ]);
+        let stream_path = /\/stream\/[^"]+/.exec(body)[0];
+        req.headers({ [x_auth_user]: 'rootstaffer' }).get(stream_path, bail(done, (stream_res, stream_body) => {
+          stream_res.statusCode.should.eql(200);
+          stream_body.should.match(/SELECT 2 rows/);
+          stream_body.should.match(/<tr><td>username<\/td>/);
+          stream_body.should.match(/<tr><td>alice<\/td>/);
+          stream_body.should.match(/<tr><td>bob<\/td>/);
+          done();
+        }));
+      }));
+    });
+  });
+  
+  describe('POST /sql/cancel/:query_id', () => {
+    
+    let sql = 'SELECT pg_sleep(3);';
+    let url = `/sql/${encodeURIComponent(sql)}`;
+    let form = { sql };
+    let stream_url, cancel_url;
+    
+    beforeEach(done => {
+      req.headers({ [x_auth_user]: 'rootstaffer' }).post(url, { form }, bail(done, (res, body) => {
+        stream_url = /\/stream\/[^"]+/.exec(body)[0];
+        cancel_url = /\/sql\/cancel\/[^"]+/.exec(body)[0];
+        done();
+      }));
+    });
+    
+    it('should require staff creator agent', done => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).post(cancel_url, { form }, bail(done, (res, body) => {
+        res.statusCode.should.eql(200);
+        app.render.templates().should.eql([ 'sql', '401' ]);
+        body.should.match(/SQL execution/);
+        done();
+      }));
+    });
+    
+    it('should cancel execution', done => {
+      req.headers({ [x_auth_user]: 'rootstaffer' }).post(cancel_url, { form }, bail(done, (res, body) => {
+        req.headers({ [x_auth_user]: 'rootstaffer' }).get(stream_url, bail(done, (stream_res, stream_body) => {
+          stream_res.statusCode.should.eql(200);
+          stream_body.should.match(/ERROR/);
+          stream_body.should.match(/canceling/);
+          done();
+        }));
+      }));
+    });
+    
+    it('should redirect to query', done => {
+      req.headers({ [x_auth_user]: 'rootstaffer' }).post(cancel_url, { form }, bail(done, (res, body) => {
+        res.statusCode.should.eql(303);
+        app.render.templates().should.eql([ 'sql' ]);
+        res.headers.location.should.eql(`/${course}${url}`);
+        done();
+      }));
+    });
+  });
 });

@@ -90,6 +90,12 @@ exports.createApp = function createApp(hosturl, omni) {
     next();
   });
   
+  app.param('query_id', (req, res, next, id) => {
+    if ( ! /^[0-9]+$/.test(id)) { return next('route'); }
+    req.params.query_id = parseInt(id);
+    next();
+  });
+  
   app.locals.course = omni.course;
   
   // API
@@ -499,6 +505,46 @@ exports.createApp = function createApp(hosturl, omni) {
     });
   });
   app.get('/users', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
+  
+  function addanyonly(req, res, next) {
+    omni.agent(res.locals.authuser, (err, agent) => {
+      if (err) { return next(err); }
+      if ( ! agent.add.includes('/**')) {
+        return res.render('401', { error: 'SQL execution requires create on /**' });
+      }
+      next();
+    });
+  }
+  
+  app.get('/sql/:sql(*)', staffonly, addanyonly, (req, res, next) => {
+    res.render('sql', { sql: req.params.sql });
+  });
+  app.get('/sql', (req, res, next) => res.redirect(301, `/${omni.course}${req.path}/`));
+  
+  app.post('/sql/', staffonly, addanyonly, body_parser.urlencoded({ extended: false }), (req, res, next) => {
+    res.redirect(307, `/${omni.course}/sql/${encodeURIComponent(req.body.sql)}`);
+  });
+  
+  app.post('/sql/cancel/:query_id', staffonly, addanyonly, body_parser.urlencoded({ extended: false }), (req, res, next) => {
+    omni.unsafeCancelExecution(res.locals.authuser, req.params.query_id, err => {
+      if (err) { return next(err); }
+      res.redirect(303, `/${omni.course}/sql/${encodeURIComponent(req.body.sql)}`);
+    });
+  });
+  
+  app.post('/sql/:sql(*)', staffonly, addanyonly, body_parser.urlencoded({ extended: false }), (req, res, next) => {
+    let sql = req.body.sql;
+    if (req.params.sql !== sql) { return res.status(500).render('500'); }
+    notify.warning({ name: 'executing SQL', message: `from user ${res.locals.authuser}\n${sql}` });
+    omni.unsafeExecute(res.locals.authuser, sql, (err, query_id, emitter) => {
+      if (err) { return next(err); }
+      res.render('sql', {
+        sql,
+        query_id,
+        stream_path: create_stream(emitter, 'sql-rows', `/${omni.course}/stream/`),
+      });
+    });
+  });
   
   app.all('*', (req, res) => res.status(404).render('404'));
   

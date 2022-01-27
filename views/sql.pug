@@ -1,0 +1,27 @@
+extends layout
+
+append head
+  title SQL - #{course} - Omnivore
+
+append content
+  
+  .staff
+    p SQL
+  
+  if query_id
+    p.pre-wrap.value= sql
+    table(data-stream=stream_path)
+      thead
+        tr(data-stream-user='result')
+          td
+            p [in progress]
+            form.staff(action=`/${course}/sql/cancel/${query_id}` method='post')
+              input(type='hidden' name='sql' value=sql)
+              p Warning: runaway queries must be canceled to avoid deadlock
+              p: button.btn.btn-default Cancel this query
+  else
+    p Warning: there is no undo, proceed at your own risk
+  
+  form(action=`/${course}/sql/` method='post')
+    p: textarea.form-control.value(name='sql', rows=20 cols=80)= sql
+    p: button.btn.btn-default Execute SQL
