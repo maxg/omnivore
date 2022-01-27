@@ -15,10 +15,10 @@ sleep 1
 # Output and tag SSH host key fingerprints
 identity=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document)
 export AWS_DEFAULT_REGION=$(jq -r .region <<< $identity)
-grep --only-matching 'ec2: .*' /var/log/syslog | sed -n '/BEGIN SSH/,/END/p' | tee /dev/fd/2 |
+grep --only-matching 'cloud-init: .*' /var/log/syslog | sed -n '/BEGIN SSH/,/END/p' | tee /dev/fd/2 |
 grep --only-matching '.\+ .\+:.\+ .\+ (.\+)' |
 while read _ _ hash _ type; do echo "Key=SSH $type,Value=$hash"; done |
-xargs -d "\n" aws ec2 create-tags --resources $(jq -r .instanceId <<< $identity) --tags
+xargs -d "\n" --no-run-if-empty aws ec2 create-tags --resources $(jq -r .instanceId <<< $identity) --tags
 
 cd "$(dirname $0)/../config"
 
