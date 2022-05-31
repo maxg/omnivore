@@ -938,13 +938,12 @@ describe('serve-course', function() {
     });
   });
   
-  describe('GET /sql/:sql', () => {
+  describe('GET /sql/', () => {
     
     let url = '/sql/';
-    let sql = 'SELECT * FROM users;';
     
     it('should require staff creator agent', done => {
-      req.headers({ [x_auth_user]: 'nanoquizzer' }).get(`${url}${sql}`, bail(done, (res, body) => {
+      req.headers({ [x_auth_user]: 'nanoquizzer' }).get(url, bail(done, (res, body) => {
         res.statusCode.should.eql(200);
         app.render.templates().should.eql([ '401' ]);
         body.should.match(/SQL execution/);
@@ -953,10 +952,9 @@ describe('serve-course', function() {
     });
     
     it('should render query', done => {
-      req.headers({ [x_auth_user]: 'rootstaffer' }).get(`${url}${sql}`, bail(done, (res, body) => {
+      req.headers({ [x_auth_user]: 'rootstaffer' }).get(url, bail(done, (res, body) => {
         res.statusCode.should.eql(200);
         app.render.templates().should.eql([ 'sql' ]);
-        body.should.match(/SELECT \* FROM users;/);
         done();
       }));
     });
@@ -986,39 +984,6 @@ describe('serve-course', function() {
       }));
     });
     
-    it('should redirect to execution', done => {
-      req.headers({ [x_auth_user]: 'rootstaffer' }).post(url, { form }, bail(done, (res, body) => {
-        res.statusCode.should.eql(307);
-        app.render.templates().should.eql([]);
-        res.headers.location.should.eql(`/${course}${url}${encodeURIComponent(sql)}`);
-        done();
-      }));
-    });
-  });
-  
-  describe('POST /sql/:sql', () => {
-    
-    let sql = 'SELECT * FROM users;';
-    let url = `/sql/${encodeURIComponent(sql)}`;
-    let form = { sql };
-    
-    it('should require staff creator agent', done => {
-      req.headers({ [x_auth_user]: 'nanoquizzer' }).post(url, { form }, bail(done, (res, body) => {
-        res.statusCode.should.eql(200);
-        app.render.templates().should.eql([ '401' ]);
-        body.should.match(/SQL execution/);
-        done();
-      }));
-    });
-    
-    it('should reject mismatched SQL', done => {
-      req.headers({ [x_auth_user]: 'rootstaffer' }).post(url.toLowerCase(), { form }, bail(done, (res, body) => {
-        res.statusCode.should.eql(500);
-        app.render.templates().should.eql([ '500' ]);
-        done();
-      }));
-    });
-    
     it('should render query results', done => {
       req.headers({ [x_auth_user]: 'rootstaffer' }).post(url, { form }, bail(done, (res, body) => {
         res.statusCode.should.eql(200);
@@ -1038,8 +1003,8 @@ describe('serve-course', function() {
   
   describe('POST /sql/cancel/:query_id', () => {
     
+    let url = '/sql/';
     let sql = 'SELECT pg_sleep(3);';
-    let url = `/sql/${encodeURIComponent(sql)}`;
     let form = { sql };
     let stream_url, cancel_url;
     
