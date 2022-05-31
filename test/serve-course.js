@@ -1021,7 +1021,9 @@ describe('serve-course', function() {
         res.statusCode.should.eql(200);
         app.render.templates().should.eql([ 'sql', '401' ]);
         body.should.match(/SQL execution/);
-        done();
+        req.headers({ [x_auth_user]: 'rootstaffer' }).post(cancel_url, { form }, bail(done, (res, body) => {
+          done();
+        }));
       }));
     });
     
