@@ -14,6 +14,8 @@ Use `vagrant ssh` to log in.
 
 In `/vagrant`...
 
+Run: `npm install`
+
 Fill in `config/env-development.js` following the example.
 
 Run `bin/serve` to start the web server.
@@ -43,6 +45,8 @@ Then `terraform plan` and `terraform apply`.
 Production
 ----------
 
-`sudo bin/daemon`
+`bin/pgremote-web` — run with a database name to start `pgweb`; SSH with *e.g.* `LocalForward localhost:8081 localhost:8081` to access by browsing to `localhost`
 
-`pgremote-web`
+`bin/pgremote-backup` — `pg_dump` all databases to the `backup` directory
+
+`bin/restore` — run with the relative path to a backup directory to drop and `pg_restore` that database; then run `config/db-schema.sql` in that database to complete the restore
