@@ -13,7 +13,7 @@
     "cookie-parser": "^1.4.5",
     "cookie-session": "^1.4.0",
     "csv": "^0.4.6",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "http-proxy": "^1.18.1",
     "memoizee": "^0.4.15",
     "multer": "^1.4.2",
