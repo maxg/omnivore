@@ -1,19 +1,16 @@
 module.exports = {
-  hostnames: [ '10.18.6.25' ],
+  hostname: 'localhost',
   oidc: {
     server: 'https://oidc.example.com',
     client: {
       client_id: 'omnivore',
       client_secret: ...,
-      redirect_uris: [ 'https://10.18.6.25:4443/auth' ],
+      redirect_uris: [ 'http://localhost:2580/auth' ],
     },
     email_domain: 'example.com',
   },
   web_secret: ...,
-  db: {
-    host: '/var/run/postgresql',
-  },
-  db_types: { ltree: 16386, ltree_array: 16389, lquery: 16440, lquery_array: 16443 },
+  db: {},
   mit: {
     domain: 'cloudhub.io',
     client_id: ...,

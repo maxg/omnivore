@@ -156,12 +156,19 @@ function client(fn) {
       
       client.inspect = function(depth, opts) { return '[client]'; }
       
-      client.logQuery = client.query;
+      // https://github.com/brianc/node-postgres/issues/2287
+      function query(stmt, ...args) {
+        if (stmt.types) {
+          stmt.types.getTypeParser = pg.types.getTypeParser;
+        }
+        return client.query(stmt, ...args);
+      }
+      client.logQuery = query;
       if (this._config.debug_query_time) {
         client.logQuery = function logQuery(stmt, ...args) {
           let qstart = +new Date();
           let cb = args.pop();
-          return client.query(stmt, ...args, (...results) => {
+          return query(stmt, ...args, (...results) => {
             let qfinish = +new Date();
             let ms = qfinish - qstart;
             self._logForTime(ms)({ query: stmt.name, values: stmt.values, ms });
@@ -739,9 +746,19 @@ Omnivore.prototype.agent = client(
   });
 }));
 
+Omnivore.prototype.addAgent = client(
+                              types.check([ pg.Client, 'agent', 'string', 'array', 'array' ], [ 'any' ],
+                              function _addAgent(client, agent, public_key, add, write, done) {
+  client.logQuery({
+    name: 'addAgent-insert-agents',
+    text: 'INSERT INTO agents (agent, public_key, add, write) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
+    values: [ agent, public_key, ...[ add, write ].map(arr => types.convertIn(arr,'key_path_query_array' )) ],
+  }, done);
+}));
+
 Omnivore.prototype.allStaff = client(
                               types.check([ pg.Client ], [ Set ],
-                              function _staff(client, done) {
+                              function _allStaff(client, done) {
   client.logQuery({
     name: 'allStaff-select-staff',
     text: 'SELECT username FROM staff',
@@ -749,6 +766,16 @@ Omnivore.prototype.allStaff = client(
     if (err) { return done(err); }
     done(null, new Set(result.rows.map(row => row.username)));
   });
+}));
+
+Omnivore.prototype.addStaff = client(
+                              types.check([ pg.Client, 'username' ], [ 'any' ],
+                              function _addStaff(client, username, done) {
+  client.logQuery({
+    name: 'addStaff-insert-staff',
+    text: 'INSERT INTO staff VALUES ($1) ON CONFLICT DO NOTHING',
+    values: [ username ]
+  }, done);
 }));
 
 Omnivore.prototype.allUsers = client(
@@ -1074,3 +1101,18 @@ Omnivore.prototype.cron = client(
     }, cb), 10)), cb),
   ], done);
 });
+
+if (require.main === module) {
+  const config = require('../config');
+  const courses = JSON.parse(process.argv[2]);
+  for (const { course, superuser } of courses) {
+    const omni = new Omnivore(course, config, true).once('ready', () => {
+      async.series([
+        cb => omni.addStaff(superuser, cb),
+        cb => omni.addAgent(superuser, '', [ '/**' ], [ '/**' ], cb),
+        cb => omni.close(cb),
+      ]);
+    });
+    omni._log.info({ course, superuser }, 'provisioning');
+  }
+}

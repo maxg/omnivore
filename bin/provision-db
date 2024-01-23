@@ -1,0 +1,8 @@
+#!/bin/sh
+
+export PGPASSWORD="$PG_MASTER_PASSWORD"
+
+psql -c "CREATE ROLE omnivore WITH LOGIN PASSWORD '$PG_APP_PASSWORD' CREATEDB"
+psql -d template1 -c "CREATE EXTENSION ltree"
+
+:

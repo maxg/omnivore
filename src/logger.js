@@ -10,11 +10,11 @@ let main = require.main ? path.basename(require.main.filename, '.js') : '_consol
 let args = process.argv.slice(2).map(s => s.replace(/[^\w.-]+/g, '-'));
 let filename = `log/omnivore-${[ main, ...args ].join('-')}.log`;
 
-var streams = [ { path: filename } ];
-if (config.env === 'development') {
+const streams = [];
+if (config.env !== 'test') {
   streams.push({ stream: process.stdout });
-}
-if (config.env === 'test') {
+} else {
+  streams.push({ path: filename });
   streams.forEach(stream => stream.level = 'debug');
 }
 

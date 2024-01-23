@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # Run server.
@@ -6,8 +6,12 @@
 
 set -e
 
+if [ "$PROVISION_COURSES" ]; then
+    node src/omnivore "$PROVISION_COURSES"
+fi
+
 node src/serve-frontend |
-if [ "$NODE_ENV" == production ]; then
+if [ "$NODE_ENV" = production ]; then
     cat # TODO
 else
     node_modules/.bin/bunyan --output short

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspaces/omnivore:cached
+    command: sleep infinity
+    links:
+      - db
+    extra_hosts:
+      mit-people-v3.localhost: '127.0.0.1'
+    environment:
+      TZ: America/New_York
+      PGHOST: db
+      PGUSER: postgres
+      PGPASSWORD: pg-dev-password
+  db:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM postgres:16
+        COPY --chmod=755 <<EOF /docker-entrypoint-initdb.d/ltree.sh
+        psql -d template1 -c "CREATE EXTENSION ltree"
+        EOF
+    restart: unless-stopped
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: pg-dev-password
+
+volumes:
+  postgresql-data:

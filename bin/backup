@@ -1,13 +1,8 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
 date=`date +%Y%m%d%H%M%S`
-
-source "$(dirname $0)/../config/postgres.vars"
-
-export PGUSER=omnivore
-export PGPASSWORD="$PG_APP_PASSWORD"
 
 psql postgres -c "copy (select datname from pg_database where datname like '%/%') to stdout" |
 while read -r db

@@ -1,5 +1,0 @@
-#!/bin/bash
-
-db="${1:?Missing database}"
-
-pgweb/pgweb_linux_amd64 --bind=localhost --url=postgres:///$db?host=/var/run/postgresql

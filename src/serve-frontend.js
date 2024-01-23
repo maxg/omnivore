@@ -3,7 +3,6 @@
 const child_process = require('child_process');
 const fs = require('fs');
 const http = require('http');
-const https = require('https');
 const path = require('path');
 
 const express = require('express');
@@ -17,7 +16,6 @@ const config = require('../config');
 const logger = require('./logger');
 const omnivore = require('./omnivore');
 const serve_course = require('./serve-course');
-const serve_redirect = require('./serve-redirect');
 
 const log = logger.log.child({ in: 'serve-frontend' });
 
@@ -38,11 +36,12 @@ async function createAppServer(hosturl, course) {
   
   const app = express();
   
+  app.set('trust proxy', 'uniquelocal');
   app.set('view engine', 'pug');
   app.set('x-powered-by', false);
   
   app.use((req, res, next) => {
-    if (req.hostname !== config.hostnames[0]) {
+    if (req.hostname !== config.hostname) {
       return res.redirect(307, `${hosturl}${req.url}`);
     }
     next();
@@ -55,7 +54,7 @@ async function createAppServer(hosturl, course) {
   
   app.use(session({
     name: 'omnivore', secret: config.web_secret,
-    secure: true, httpOnly: true, sameSite: 'lax', signed: true, overwrite: true,
+    secure: config.env === 'production', httpOnly: true, sameSite: 'lax', signed: true, overwrite: true,
   }));
   
   app.use(logger.express(log, { incoming: true }));
@@ -108,14 +107,7 @@ async function createAppServer(hosturl, course) {
     next();
   }
   
-  let server = https.createServer(app);
-  let certify = () => server.setSecureContext({
-    key: fs.readFileSync('./config/tls/privkey.pem'),
-    cert: fs.readFileSync('./config/tls/fullchain.pem'),
-  });
-  certify();
-  setInterval(certify, 1000 * 60 * 60 * 24).unref();
-  return server;
+  return http.createServer(app);
 }
 
 async function createCourseProxy(hosturl) {
@@ -179,13 +171,12 @@ async function createCourseProxy(hosturl) {
 }
 
 exports.main = async function main() {
-  const port = config.env === 'production' ? 443 : 4443;
-  const hosturl = `https://${config.hostnames[0]}${port === 443 ? '' : `:${port}`}`;
+  const prod = config.env === 'production'
+  const port = prod ? 80 : 2580;
+  const hosturl = `${prod ? 'https' : 'http'}://${config.hostname}${prod ? '' : `:${port}`}`;
   const course = await createCourseProxy(hosturl);
   const server = await createAppServer(hosturl, course);
   server.listen(port, () => log.info({ address: server.address() }, 'listening'));
-  
-  serve_redirect.listen(hosturl, config.env === 'production' ? 80 : 8080);
 }
 
 if (require.main === module) {

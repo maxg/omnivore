@@ -2,20 +2,20 @@
 
 set -e
 
-cd "$(dirname "${BASH_SOURCE[0]}")"/..
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 revision=$1
 
 if [[ "$revision" == "--working" ]]; then
   revision=`git rev-parse --quiet --short HEAD || echo 0000000`-wip
-  echo "Packing working copy $revision"
+  echo "Build working copy $revision"
+  git status --short
   # Only pack files that are tracked by Git
-  # COPYFILE_DISABLE disables the use of `._` files to store OS X xattrs & ACLs
-  tar="COPYFILE_DISABLE=1 tar c -T <(git ls-files)"
+  tar="tar c -T <(git ls-files)"
 
 elif git rev-parse --quiet --verify $revision > /dev/null; then
   revision=`git rev-parse --short $revision`
-  echo "Packing revision $revision"
+  echo "Build revision $revision"
   tar="git archive $revision"
 
 else
@@ -23,11 +23,11 @@ else
   exit 1
 fi
 
-shift
+name=`git config --get remote.origin.url https://github.com/ || basename $PWD`
+name=${name/https:??github.com/ghcr.io}
+name=${name%.git}
 
-cmd="packer build -var-file=setup/packer.conf.json \\
-             -var rev=$revision -var tar=<(eval $tar) \\
-             ""$@"" \\
-             setup/packer.json"
+cmd="$tar | docker build --platform amd64 --tag $name:$revision -"
 echo "$cmd"
+
 eval "$cmd"

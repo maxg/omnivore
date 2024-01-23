@@ -1,9 +1,0 @@
-web_hosts = [ "omnivore.example.com" ]
-le_contact = "...@example.com"
-oidc_host = "oidc.example.com"
-oidc_id = "omnivore"
-oidc_secret = "..."
-oidc_email_domain = "example.com"
-mit_domain = "cloudhub.io"
-mit_id = "..."
-mit_secret = "..."

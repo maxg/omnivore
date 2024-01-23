@@ -473,7 +473,7 @@ describe('Omnivore', function() {
         omni.get({ username: 'alice', key: '/test/gamma' }, bail(done, rows => {
           let end = new Date();
           rows[0].should.read({ username: 'alice', key: '/test/gamma' });
-          rows[0].ts.should.be.greaterThan(start).and.lessThan(end);
+          rows[0].ts.should.be.greaterThanOrEqual(start).and.lessThanOrEqual(end);
           done();
         }));
       });
@@ -1228,6 +1228,24 @@ describe('Omnivore', function() {
     });
   });
   
+  describe('#addAgent()', () => {
+    
+    it('should add agent', done => {
+      async.series([
+        cb => omni.addAgent('newagent', 'KEY', [ '/**' ], [ '/**' ], cb),
+        cb => omni.agent('newagent', cb),
+      ], bail(done, results => {
+        results[1].should.read({
+          agent: 'newagent',
+          public_key: 'KEY',
+          add: [ '/**' ],
+          write: [ '/**' ],
+        });
+        done();
+      }));
+    });
+  });
+  
   describe('#allStaff()', () => {
     
     it('should return staff', done => {
@@ -1245,6 +1263,19 @@ describe('Omnivore', function() {
       ], bail(done, results => {
         results[0].should.read(new Set([ 'staffer' ]));
         results[2].should.read(new Set([ 'staffer' ]));
+        done();
+      }));
+    });
+  });
+  
+  describe('#addStaff()', () => {
+    
+    it('should add staff', done => {
+      async.series([
+        cb => omni.addStaff('newstaffer', cb),
+        cb => omni.allStaff(cb),
+      ], bail(done, results => {
+        results[1].should.read(new Set([ 'staffer', 'newstaffer' ]));
         done();
       }));
     });
