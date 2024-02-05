@@ -842,6 +842,21 @@ Omnivore.prototype.users = client(
   ], done);
 }));
 
+Omnivore.prototype.hasRoster = client(
+                               types.check([ pg.Client ], [ 'boolean' ],
+                               function _hasRoster(client, done) {
+  async.waterfall([
+    cb => client.logQuery({
+      name: 'hasRoster-select-users',
+      text: `SELECT EXISTS(SELECT true FROM users WHERE on_roster)`,
+    }, cb),
+    (result, cb) => {
+      assert(result.rows.length == 1);
+      cb(null, result.rows[0].exists);
+    },
+  ], done);
+}));
+
 Omnivore.prototype.setRoster = client(transaction(
                                types.translate([ pg.Client, 'agent', 'username_array '], [ 'any' ],
                                function _setRoster(client, agent, usernames, done) {

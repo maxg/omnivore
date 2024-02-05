@@ -200,6 +200,7 @@ exports.createApp = function createApp(hosturl, omni) {
         });
       } else {
         async.auto({
+          hasroster: cb => omni.hasRoster(cb),
           dirs: cb => omni.dirs(spec, cb),
           children: cb => omni.children(spec, cb),
           grandchildren: cb => omni.grandchildren(spec, cb),

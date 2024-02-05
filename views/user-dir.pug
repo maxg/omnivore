@@ -12,7 +12,7 @@ append content
           tr
             if pageuser.on_staff
               td [staff] in #{course}
-            else if ! pageuser.on_roster
+            else if hasroster && ! pageuser.on_roster
               td [&ne;] not on the #{course} roster
   
   p.key: +keynav(key)
