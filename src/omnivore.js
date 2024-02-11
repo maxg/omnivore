@@ -933,7 +933,7 @@ Omnivore.prototype.rules = client(
     computed: [
       `SELECT * FROM computation_rules WHERE $1 ~ (CASE WHEN base IS NULL THEN '' ELSE base::TEXT || '.' END || output::TEXT)::LQUERY`,
       row => Object.assign(row, {
-        base: types.convertOut(row.base, 'key_ltree_query'),
+        base: row.base === null ? '' : types.convertOut(row.base, 'key_ltree_query'),
         output: types.convertOut(row.output, 'key'),
         inputs: types.convertOut(row.inputs, 'key_ltree_query_array'),
       }),
@@ -943,7 +943,7 @@ Omnivore.prototype.rules = client(
        WHERE $1 ~ (CASE WHEN base IS NULL THEN '' ELSE base::TEXT || '.' END || input::TEXT)::LQUERY
        ORDER BY CASE WHEN base IS NULL THEN '' ELSE base::TEXT || '.' END || output::TEXT`,
       row => Object.assign(row, {
-        base: types.convertOut(row.base, 'key_ltree_query'),
+        base: row.base === null ? '' : types.convertOut(row.base, 'key_ltree_query'),
         output: types.convertOut(row.output, 'key'),
         inputs: types.convertOut(row.inputs, 'key_ltree_query_array'),
       }),

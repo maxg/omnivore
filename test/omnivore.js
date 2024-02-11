@@ -1549,6 +1549,21 @@ describe('Omnivore', function() {
         done();
       }));
     });
+    
+    it('should return computation rules with empty base', done => {
+      async.series([
+        cb => omni.active('/test/**', now, cb),
+        cb => omni.compute('', 'test/b', [ 'test/a' ], () => null, cb),
+        cb => omni.compute('', 'test/c', [ 'test/b' ], () => null, cb),
+        cb => omni.rules('/test/b', cb),
+      ], bail(done, results => {
+        results[3].should.read({
+          computed: [ { base: '', output: '/test/b' } ],
+          computes: [ { base: '', output: '/test/c' } ],
+        });
+        done();
+      }));
+    });
   });
   
   describe('#active()', () => {
