@@ -18,5 +18,5 @@ echo "Drop $course and restore from $date"
 
 dropdb --interactive --if-exists "$course"
 createdb "$course"
-pg_restore -v --dbname="$course" --schema=public --no-owner "$source"
+pg_restore -v --dbname="$course" --schema=public --no-owner "$source" || :
 psql -q -d "$course" -f "$prefix/../config/db-schema.sql"
